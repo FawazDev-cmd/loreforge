@@ -13,6 +13,8 @@ _SENTENCE_BOUNDARY_PATTERN = re.compile(r"[.!?]\s+")
 
 @dataclass(frozen=True, slots=True)
 class ChunkingConfig:
+    """Character chunking limits used for page-bounded document chunks."""
+
     chunk_size: int = 1000
     chunk_overlap: int = 150
 

@@ -124,6 +124,45 @@ def test_ingest_pdf_is_deterministic_for_identical_input() -> None:
     ]
 
 
+def test_ingest_pdf_handles_realistic_multi_page_pipeline_deterministically() -> None:
+    content = _text_pdf(
+        (
+            "Overview    section explains the platform.\r\n"
+            "It keeps source pages available for later citations.",
+            "Policy    section lists approval steps.\n\n"
+            "Each paragraph remains tied to the second page.",
+            "Support    section includes escalation notes and owner details.",
+        )
+    )
+    document_id = uuid4()
+    source = _source(size_bytes=len(content))
+    config = ChunkingConfig(chunk_size=45, chunk_overlap=8)
+
+    first = ingest_pdf(
+        document_id=document_id,
+        source=source,
+        content=content,
+        chunking_config=config,
+    )
+    second = ingest_pdf(
+        document_id=document_id,
+        source=source,
+        content=content,
+        chunking_config=config,
+    )
+
+    assert first == second
+    assert [page.page_number for page in first.document.pages] == [1, 2, 3]
+    assert all("  " not in page.text for page in first.document.pages)
+    assert {chunk.page_number for chunk in first.chunks} == {1, 2, 3}
+    assert [chunk.chunk_index for chunk in first.chunks] == list(
+        range(len(first.chunks))
+    )
+    for chunk in first.chunks:
+        page_text = first.document.pages[chunk.page_number - 1].text
+        assert chunk.text in page_text
+
+
 def test_ingestion_result_is_immutable() -> None:
     content = _text_pdf(("Immutable result text.",))
     result = ingest_pdf(
