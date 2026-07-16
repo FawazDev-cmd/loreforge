@@ -3,6 +3,7 @@
 from collections.abc import Callable, Iterable
 from importlib import import_module
 from typing import Any, cast
+from uuid import uuid4
 
 from loreforge.embeddings.models import (
     EmbeddingRequest,
@@ -44,7 +45,30 @@ class LocalSentenceTransformerProvider:
         self,
         requests: tuple[EmbeddingRequest, ...],
     ) -> EmbeddingResult:
-        """Embed ordered text requests using the configured local model."""
+        """Embed ordered text requests using the document embedding path."""
+        return self.embed_documents(requests)
+
+    def embed_documents(
+        self,
+        requests: tuple[EmbeddingRequest, ...],
+    ) -> EmbeddingResult:
+        """Embed ordered document-text requests."""
+        return self._embed_requests(requests, use_query_encoder=False)
+
+    def embed_query(self, question: str) -> EmbeddingVector:
+        """Embed one user query using the query embedding path when available."""
+        result = self._embed_requests(
+            (EmbeddingRequest(item_id=uuid4(), text=question),),
+            use_query_encoder=True,
+        )
+        return result.vectors[0]
+
+    def _embed_requests(
+        self,
+        requests: tuple[EmbeddingRequest, ...],
+        *,
+        use_query_encoder: bool,
+    ) -> EmbeddingResult:
         if not requests:
             msg = "requests must contain at least one request"
             raise ValueError(msg)
@@ -53,7 +77,11 @@ class LocalSentenceTransformerProvider:
         texts = tuple(request.text for request in requests)
 
         try:
-            raw_embeddings = self._encode_documents(model, texts)
+            raw_embeddings = self._encode_texts(
+                model,
+                texts,
+                use_query_encoder=use_query_encoder,
+            )
         except Exception as error:
             msg = "local embedding inference failed"
             raise LocalEmbeddingError(msg) from error
@@ -83,12 +111,18 @@ class LocalSentenceTransformerProvider:
 
         return self._model
 
-    def _encode_documents(
+    def _encode_texts(
         self,
         model: Any,
         texts: tuple[str, ...],
+        *,
+        use_query_encoder: bool,
     ) -> Iterable[Iterable[object]]:
-        if hasattr(model, "encode_document"):
+        if use_query_encoder and hasattr(model, "encode_query"):
+            raw_embeddings = model.encode_query(texts, batch_size=self.batch_size)
+            return cast(Iterable[Iterable[Any]], raw_embeddings)
+
+        if not use_query_encoder and hasattr(model, "encode_document"):
             raw_embeddings = model.encode_document(texts, batch_size=self.batch_size)
             return cast(Iterable[Iterable[Any]], raw_embeddings)
 

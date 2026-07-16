@@ -14,7 +14,7 @@ from loreforge.embeddings.pipeline import (
     EmbeddingPipelineError,
     embed_chunks,
 )
-from loreforge.embeddings.provider import EmbeddingProvider
+from loreforge.embeddings.provider import EmbeddingProvider, QueryEmbeddingProvider
 
 __all__ = [
     "EmbeddedChunk",
@@ -25,5 +25,6 @@ __all__ = [
     "EmbeddingVector",
     "LocalEmbeddingError",
     "LocalSentenceTransformerProvider",
+    "QueryEmbeddingProvider",
     "embed_chunks",
 ]
