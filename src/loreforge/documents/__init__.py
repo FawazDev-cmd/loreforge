@@ -5,6 +5,7 @@ from loreforge.documents.chunking import (
     ChunkingConfig,
     chunk_document,
 )
+from loreforge.documents.ingestion import IngestionResult, ingest_pdf
 from loreforge.documents.models import (
     DocumentChunk,
     DocumentPage,
@@ -30,6 +31,7 @@ __all__ = [
     "DocumentSource",
     "DocumentChunk",
     "ChunkingConfig",
+    "IngestionResult",
     "LOREFORGE_CHUNK_NAMESPACE",
     "MAX_UPLOAD_SIZE_BYTES",
     "PDF_MEDIA_TYPE",
@@ -40,6 +42,7 @@ __all__ = [
     "UnsupportedDocumentError",
     "ValidatedUpload",
     "chunk_document",
+    "ingest_pdf",
     "normalize_document",
     "parse_pdf",
     "validate_pdf_upload",
