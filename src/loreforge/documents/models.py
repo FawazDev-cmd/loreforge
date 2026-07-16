@@ -65,3 +65,28 @@ class ParsedDocument:
         if page_numbers != tuple(sorted(page_numbers)):
             msg = "pages must be ordered by ascending page number"
             raise ValueError(msg)
+
+
+@dataclass(frozen=True, slots=True)
+class DocumentChunk:
+    """Page-bounded document text with citation provenance."""
+
+    chunk_id: UUID
+    document_id: UUID
+    source: DocumentSource
+    page_number: int
+    chunk_index: int
+    text: str
+
+    def __post_init__(self) -> None:
+        if self.page_number < 1:
+            msg = "page_number must be greater than or equal to 1"
+            raise ValueError(msg)
+
+        if self.chunk_index < 0:
+            msg = "chunk_index must be greater than or equal to 0"
+            raise ValueError(msg)
+
+        if not self.text.strip():
+            msg = "text must not be empty"
+            raise ValueError(msg)

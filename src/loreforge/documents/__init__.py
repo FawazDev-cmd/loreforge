@@ -1,6 +1,16 @@
 """Public document contracts for LoreForge."""
 
-from loreforge.documents.models import DocumentPage, DocumentSource, ParsedDocument
+from loreforge.documents.chunking import (
+    LOREFORGE_CHUNK_NAMESPACE,
+    ChunkingConfig,
+    chunk_document,
+)
+from loreforge.documents.models import (
+    DocumentChunk,
+    DocumentPage,
+    DocumentSource,
+    ParsedDocument,
+)
 from loreforge.documents.normalization import (
     TextNormalizationError,
     normalize_document,
@@ -18,6 +28,9 @@ from loreforge.documents.upload import (
 __all__ = [
     "DocumentPage",
     "DocumentSource",
+    "DocumentChunk",
+    "ChunkingConfig",
+    "LOREFORGE_CHUNK_NAMESPACE",
     "MAX_UPLOAD_SIZE_BYTES",
     "PDF_MEDIA_TYPE",
     "PDF_SIGNATURE",
@@ -26,6 +39,7 @@ __all__ = [
     "TextNormalizationError",
     "UnsupportedDocumentError",
     "ValidatedUpload",
+    "chunk_document",
     "normalize_document",
     "parse_pdf",
     "validate_pdf_upload",
