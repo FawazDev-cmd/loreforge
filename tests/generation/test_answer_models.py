@@ -213,9 +213,10 @@ def test_grounded_answer_accepts_valid_unvalidated_answer() -> None:
     assert answer.citations_validated is False
 
 
-def test_grounded_answer_rejects_validated_citations_for_day_17() -> None:
-    with pytest.raises(ValueError, match="citations_validated"):
-        _grounded_answer(citations_validated=True)
+def test_grounded_answer_accepts_validated_citations_for_day_18() -> None:
+    answer = _grounded_answer(citations_validated=True)
+
+    assert answer.citations_validated is True
 
 
 @pytest.mark.parametrize("question", ["", "   "])

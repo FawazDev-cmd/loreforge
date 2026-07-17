@@ -5,6 +5,12 @@ from loreforge.generation.answer_models import (
     GroundedGenerationRequest,
     SourceReference,
 )
+from loreforge.generation.citations import (
+    CitationEnforcementError,
+    extract_citations,
+    validate_citations,
+    validate_grounded_answer,
+)
 from loreforge.generation.evidence import (
     EvidenceContext,
     EvidenceContextConfig,
@@ -29,8 +35,20 @@ from loreforge.generation.orchestration import (
 )
 from loreforge.generation.prompting import PromptPackage, build_grounded_prompt
 from loreforge.generation.provider import LLMProvider
+from loreforge.generation.validation_models import (
+    CitationExtraction,
+    CitationValidationResult,
+    ValidatedGroundedAnswer,
+)
 
 __all__ = [
+    "CitationEnforcementError",
+    "CitationExtraction",
+    "CitationValidationResult",
+    "ValidatedGroundedAnswer",
+    "extract_citations",
+    "validate_citations",
+    "validate_grounded_answer",
     "EvidenceContext",
     "EvidenceContextConfig",
     "EvidenceContextError",

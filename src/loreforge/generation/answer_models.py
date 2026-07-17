@@ -165,7 +165,3 @@ class GroundedAnswer:
         if type(citations_validated) is not bool:
             msg = "citations_validated must be a boolean"
             raise ValueError(msg)
-
-        if self.citations_validated:
-            msg = "citations_validated must be false until citation validation exists"
-            raise ValueError(msg)
