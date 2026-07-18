@@ -26,6 +26,7 @@ from loreforge.generation.validation_models import (
 )
 from loreforge.indexing import DocumentIndexingService
 from loreforge.main import create_app
+from loreforge.observability import InMemoryMetricsRecorder
 from loreforge.query import ProductionGroundedQueryEngine
 from loreforge.reranking import RerankingRequest, RerankingScore
 from loreforge.retrieval.bm25 import InMemoryBM25Index
@@ -274,6 +275,7 @@ def _container(
         vector_index=vector_index,
         lexical_index=lexical_index,
         query_engine=None,
+        metrics_recorder=InMemoryMetricsRecorder(),
     )
 
 
@@ -542,3 +544,33 @@ def _indexing_service(
         vector_index=vector_index,
         lexical_index=lexical_index,
     )
+
+
+def test_configured_runtime_uses_container_metrics_recorder() -> None:
+    container = create_application_container(factories=_runtime_factories())
+
+    assert container.query_engine is not None
+    assert container.query_engine._metrics_recorder is container.metrics_recorder
+    assert container.metrics_recorder.snapshot() == ()
+
+
+def test_default_degraded_askme_records_no_query_observation() -> None:
+    container = create_application_container()
+
+    with pytest.raises(AskMeUnavailableError):
+        container.askme_service.ask(AskMeRequest(QUESTION))
+
+    assert container.metrics_recorder.snapshot() == ()
+
+
+def test_application_instance_metrics_recorders_are_isolated() -> None:
+    first = create_application_container(factories=_runtime_factories())
+    second = create_application_container(factories=_runtime_factories())
+
+    assert first.metrics_recorder is not second.metrics_recorder
+    assert first.query_engine is not None
+    assert second.query_engine is not None
+    assert first.query_engine._metrics_recorder is first.metrics_recorder
+    assert second.query_engine._metrics_recorder is second.metrics_recorder
+    assert first.metrics_recorder.snapshot() == ()
+    assert second.metrics_recorder.snapshot() == ()

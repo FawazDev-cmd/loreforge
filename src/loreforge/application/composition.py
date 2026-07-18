@@ -11,6 +11,7 @@ from loreforge.embeddings.provider import EmbeddingProvider, QueryEmbeddingProvi
 from loreforge.generation.provider import LLMProvider
 from loreforge.generation.validation_models import ValidatedGroundedAnswer
 from loreforge.indexing import DocumentIndexingService, PdfIngestor
+from loreforge.observability import InMemoryMetricsRecorder
 from loreforge.query import ProductionGroundedQueryEngine
 from loreforge.reranking import RerankerProvider
 from loreforge.retrieval.bm25 import InMemoryBM25Index
@@ -53,6 +54,7 @@ def create_application_container(
     catalog_service = CatalogService(InMemoryCatalogRepository())
     vector_index = InMemoryVectorIndex()
     lexical_index = InMemoryBM25Index()
+    metrics_recorder = InMemoryMetricsRecorder()
     document_indexing_service = _create_document_indexing_service(
         catalog_service=catalog_service,
         vector_index=vector_index,
@@ -63,6 +65,7 @@ def create_application_container(
         vector_index=vector_index,
         lexical_index=lexical_index,
         factories=factories,
+        metrics_recorder=metrics_recorder,
     )
     askme_service = _create_askme_service(
         factories=factories,
@@ -75,6 +78,7 @@ def create_application_container(
         vector_index=vector_index,
         lexical_index=lexical_index,
         query_engine=query_engine,
+        metrics_recorder=metrics_recorder,
     )
 
 
@@ -138,6 +142,7 @@ def _create_query_engine(
     vector_index: InMemoryVectorIndex,
     lexical_index: InMemoryBM25Index,
     factories: CompositionFactories | None,
+    metrics_recorder: InMemoryMetricsRecorder,
 ) -> ProductionGroundedQueryEngine | None:
     if factories is None:
         return None
@@ -158,6 +163,7 @@ def _create_query_engine(
         lexical_retriever=lexical_index,
         reranker=reranker,
         answer_generator=answer_generator,
+        metrics_recorder=metrics_recorder,
     )
 
 

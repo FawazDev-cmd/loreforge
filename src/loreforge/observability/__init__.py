@@ -6,7 +6,12 @@ from loreforge.observability.clocks import (
     SystemUtcClock,
     UtcClock,
 )
-from loreforge.observability.models import LatencySummary, RequestTrace, StageMetric
+from loreforge.observability.models import (
+    LatencySummary,
+    RequestTrace,
+    RuntimeQueryObservation,
+    StageMetric,
+)
 from loreforge.observability.recorder import (
     InMemoryMetricsRecorder,
     MetricsRecorder,
@@ -24,6 +29,7 @@ __all__ = [
     "RequestTrace",
     "RequestTracer",
     "RequestTracingError",
+    "RuntimeQueryObservation",
     "StageMetric",
     "SystemMonotonicClock",
     "SystemUtcClock",

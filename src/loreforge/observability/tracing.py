@@ -10,7 +10,11 @@ from loreforge.observability.clocks import (
     SystemUtcClock,
     UtcClock,
 )
-from loreforge.observability.models import RequestTrace, StageMetric
+from loreforge.observability.models import (
+    RequestTrace,
+    RuntimeQueryObservation,
+    StageMetric,
+)
 from loreforge.observability.recorder import MetricsRecorder
 
 
@@ -87,7 +91,9 @@ class RequestTracer:
             )
             self._active_stage = None
 
-    def finish_success(self) -> RequestTrace:
+    def finish_success(
+        self, *, observation: RuntimeQueryObservation | None = None
+    ) -> RequestTrace:
         self._validate_can_finish()
         if any(not stage.success for stage in self._stages):
             msg = "cannot finish successfully after a failed stage"
@@ -99,11 +105,15 @@ class RequestTracer:
             duration_ms=self._request_duration_ms(),
             success=True,
             stages=tuple(self._stages),
+            observation=observation,
         )
         return self._record_finished(trace)
 
     def finish_failure(
-        self, error: BaseException | type[BaseException]
+        self,
+        error: BaseException | type[BaseException],
+        *,
+        observation: RuntimeQueryObservation | None = None,
     ) -> RequestTrace:
         self._validate_can_finish()
         error_type = error.__name__ if isinstance(error, type) else type(error).__name__
@@ -115,6 +125,7 @@ class RequestTracer:
             success=False,
             stages=tuple(self._stages),
             error_type=error_type,
+            observation=observation,
         )
         return self._record_finished(trace)
 

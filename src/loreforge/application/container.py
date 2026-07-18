@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from loreforge.askme import AskMeService
 from loreforge.catalog import CatalogService
 from loreforge.indexing import DocumentIndexingService
+from loreforge.observability import InMemoryMetricsRecorder
 from loreforge.query import ProductionGroundedQueryEngine
 from loreforge.retrieval.bm25 import InMemoryBM25Index
 from loreforge.vector_index import InMemoryVectorIndex
@@ -20,6 +21,7 @@ class ApplicationContainer:
     vector_index: InMemoryVectorIndex
     lexical_index: InMemoryBM25Index
     query_engine: ProductionGroundedQueryEngine | None
+    metrics_recorder: InMemoryMetricsRecorder
 
     def __post_init__(self) -> None:
         if type(self.catalog_service) is not CatalogService:
@@ -42,4 +44,7 @@ class ApplicationContainer:
             and type(self.query_engine) is not ProductionGroundedQueryEngine
         ):
             msg = "query_engine must be a ProductionGroundedQueryEngine or None"
+            raise TypeError(msg)
+        if type(self.metrics_recorder) is not InMemoryMetricsRecorder:
+            msg = "metrics_recorder must be an InMemoryMetricsRecorder"
             raise TypeError(msg)

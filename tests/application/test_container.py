@@ -9,6 +9,7 @@ from loreforge.askme import AskMeService
 from loreforge.catalog import CatalogService, InMemoryCatalogRepository
 from loreforge.generation.validation_models import ValidatedGroundedAnswer
 from loreforge.indexing import DocumentIndexingService
+from loreforge.observability import InMemoryMetricsRecorder
 from loreforge.retrieval.bm25 import InMemoryBM25Index
 from loreforge.vector_index import InMemoryVectorIndex
 
@@ -31,6 +32,7 @@ def test_container_requires_exact_catalog_service() -> None:
             vector_index=services.vector_index,
             lexical_index=services.lexical_index,
             query_engine=None,
+            metrics_recorder=services.metrics_recorder,
         )
 
 
@@ -45,6 +47,7 @@ def test_container_requires_exact_askme_service() -> None:
             vector_index=services.vector_index,
             lexical_index=services.lexical_index,
             query_engine=None,
+            metrics_recorder=services.metrics_recorder,
         )
 
 
@@ -59,6 +62,7 @@ def test_container_requires_exact_document_indexing_service() -> None:
             vector_index=services.vector_index,
             lexical_index=services.lexical_index,
             query_engine=None,
+            metrics_recorder=services.metrics_recorder,
         )
 
 
@@ -73,6 +77,7 @@ def test_container_requires_exact_vector_index() -> None:
             vector_index=object(),
             lexical_index=services.lexical_index,
             query_engine=None,
+            metrics_recorder=services.metrics_recorder,
         )
 
 
@@ -87,6 +92,7 @@ def test_container_requires_exact_lexical_index() -> None:
             vector_index=services.vector_index,
             lexical_index=object(),
             query_engine=None,
+            metrics_recorder=services.metrics_recorder,
         )
 
 
@@ -101,6 +107,22 @@ def test_container_rejects_invalid_query_engine() -> None:
             vector_index=services.vector_index,
             lexical_index=services.lexical_index,
             query_engine=object(),
+            metrics_recorder=services.metrics_recorder,
+        )
+
+
+def test_container_rejects_invalid_metrics_recorder() -> None:
+    services = _services()
+
+    with pytest.raises(TypeError, match="InMemoryMetricsRecorder"):
+        ApplicationContainer(  # type: ignore[arg-type]
+            catalog_service=services.catalog_service,
+            askme_service=services.askme_service,
+            document_indexing_service=services.indexing_service,
+            vector_index=services.vector_index,
+            lexical_index=services.lexical_index,
+            query_engine=None,
+            metrics_recorder=object(),
         )
 
 
@@ -123,6 +145,7 @@ def test_container_retains_service_identity() -> None:
         vector_index=services.vector_index,
         lexical_index=services.lexical_index,
         query_engine=None,
+        metrics_recorder=services.metrics_recorder,
     )
 
     assert container.catalog_service is services.catalog_service
@@ -131,6 +154,7 @@ def test_container_retains_service_identity() -> None:
     assert container.vector_index is services.vector_index
     assert container.lexical_index is services.lexical_index
     assert container.query_engine is None
+    assert container.metrics_recorder is services.metrics_recorder
 
 
 def test_container_has_no_fastapi_or_pydantic_imports() -> None:
@@ -147,6 +171,7 @@ class Services:
         self.askme_service = AskMeService(query_engine=UnavailableEngine())
         self.vector_index = InMemoryVectorIndex()
         self.lexical_index = InMemoryBM25Index()
+        self.metrics_recorder = InMemoryMetricsRecorder()
         self.indexing_service = DocumentIndexingService(
             catalog_service=self.catalog_service,
             embedding_provider=None,
@@ -164,6 +189,7 @@ def _container() -> ApplicationContainer:
         vector_index=services.vector_index,
         lexical_index=services.lexical_index,
         query_engine=None,
+        metrics_recorder=services.metrics_recorder,
     )
 
 

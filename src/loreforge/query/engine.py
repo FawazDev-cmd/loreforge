@@ -1,8 +1,10 @@
 """Production grounded-query composition engine."""
 
 from collections.abc import Callable
+from uuid import UUID, uuid4
 
 from loreforge.embeddings import EmbeddingVector, QueryEmbeddingProvider
+from loreforge.evaluation import evaluate_citations
 from loreforge.generation.answer_models import GroundedAnswer
 from loreforge.generation.citations import validate_grounded_answer
 from loreforge.generation.evidence import (
@@ -17,6 +19,13 @@ from loreforge.generation.orchestration import source_references_from_evidence
 from loreforge.generation.prompting import PromptPackage, build_grounded_prompt
 from loreforge.generation.provider import LLMProvider
 from loreforge.generation.validation_models import ValidatedGroundedAnswer
+from loreforge.observability import (
+    MetricsRecorder,
+    MonotonicClock,
+    RequestTracer,
+    RuntimeQueryObservation,
+    UtcClock,
+)
 from loreforge.query.errors import (
     NoRelevantEvidenceError,
     QueryCompositionError,
@@ -40,6 +49,7 @@ from loreforge.vector_index import InMemoryVectorIndex, VectorSearchResult
 
 _QUERY_EXECUTION_ERROR = "query execution failed"
 _NO_RELEVANT_EVIDENCE = "no relevant evidence was found"
+_OBSERVED_OPERATION = "askme.query"
 
 HybridFuser = Callable[
     [tuple[VectorSearchResult, ...], tuple[LexicalSearchResult, ...], int, int],
@@ -72,6 +82,10 @@ class ProductionGroundedQueryEngine:
         prompt_builder: PromptBuilder | None = None,
         citation_enforcer: CitationEnforcer = validate_grounded_answer,
         reranking_stage: RerankingStage | None = None,
+        metrics_recorder: MetricsRecorder | None = None,
+        trace_id_factory: Callable[[], UUID] = uuid4,
+        monotonic_clock: MonotonicClock | None = None,
+        utc_clock: UtcClock | None = None,
         semantic_top_k: int = 10,
         lexical_top_k: int = 10,
         hybrid_top_k: int = 10,
@@ -91,6 +105,10 @@ class ProductionGroundedQueryEngine:
         self._prompt_builder = prompt_builder or _default_prompt_builder
         self._citation_enforcer = citation_enforcer
         self._reranking_stage = reranking_stage or _default_reranking_stage
+        self._metrics_recorder = metrics_recorder
+        self._trace_id_factory = trace_id_factory
+        self._monotonic_clock = monotonic_clock
+        self._utc_clock = utc_clock
         self._semantic_top_k = semantic_top_k
         self._lexical_top_k = lexical_top_k
         self._hybrid_top_k = hybrid_top_k
@@ -102,6 +120,11 @@ class ProductionGroundedQueryEngine:
 
     def answer(self, question: str) -> ValidatedGroundedAnswer:
         """Return a citation-validated grounded answer for a question."""
+        if self._metrics_recorder is None:
+            return self._answer_unobserved(question)
+        return self._answer_observed(question)
+
+    def _answer_unobserved(self, question: str) -> ValidatedGroundedAnswer:
         self._validate_question(question)
         query_vector = self._embed_query(question)
         semantic_results = self._semantic_search(query_vector)
@@ -124,6 +147,67 @@ class ProductionGroundedQueryEngine:
         prompt = self._build_prompt(question, evidence)
         grounded_answer = self._generate_answer(question, evidence, prompt)
         return self._enforce_citations(grounded_answer)
+
+    def _answer_observed(self, question: str) -> ValidatedGroundedAnswer:
+        if self._metrics_recorder is None:
+            return self._answer_unobserved(question)
+
+        tracer = RequestTracer(
+            operation=_OBSERVED_OPERATION,
+            recorder=self._metrics_recorder,
+            request_id=self._trace_id_factory(),
+            monotonic_clock=self._monotonic_clock,
+            utc_clock=self._utc_clock,
+        )
+        observation = _RuntimeObservationBuilder()
+
+        try:
+            with tracer.stage("validation"):
+                self._validate_question(question)
+            with tracer.stage("query_embedding"):
+                query_vector = self._embed_query(question)
+            with tracer.stage("semantic_retrieval"):
+                semantic_results = self._semantic_search(query_vector)
+            observation.semantic_result_count = len(semantic_results)
+            with tracer.stage("lexical_retrieval"):
+                lexical_response = self._lexical_search(question)
+            observation.lexical_result_count = len(lexical_response.results)
+            if not semantic_results and not lexical_response.results:
+                raise NoRelevantEvidenceError(_NO_RELEVANT_EVIDENCE)
+
+            with tracer.stage("hybrid_fusion"):
+                hybrid_results = self._fuse_results(semantic_results, lexical_response)
+            observation.fused_result_count = len(hybrid_results)
+            if not hybrid_results:
+                raise NoRelevantEvidenceError(_NO_RELEVANT_EVIDENCE)
+
+            with tracer.stage("reranking"):
+                reranked = self._rerank(question, hybrid_results)
+            observation.reranked_result_count = len(reranked.results)
+            if not reranked.results:
+                raise NoRelevantEvidenceError(_NO_RELEVANT_EVIDENCE)
+
+            with tracer.stage("evidence_construction"):
+                evidence = self._build_evidence(reranked)
+            observation.evidence_count = len(evidence.items)
+            if not evidence.items:
+                raise NoRelevantEvidenceError(_NO_RELEVANT_EVIDENCE)
+
+            with tracer.stage("prompt_construction"):
+                prompt = self._build_prompt(question, evidence)
+            with tracer.stage("generation"):
+                grounded_answer = self._generate_answer(question, evidence, prompt)
+            observation.provider_model = grounded_answer.provider_model
+            observation.finish_reason = grounded_answer.finish_reason
+            with tracer.stage("citation_validation"):
+                validated_answer = self._enforce_citations(grounded_answer)
+            observation.record_citation_evaluation(validated_answer)
+        except BaseException as exc:
+            self._finish_failure_safely(tracer, exc, observation)
+            raise
+
+        self._finish_success_safely(tracer, observation)
+        return validated_answer
 
     def _validate_question(self, question: str) -> None:
         question_object: object = question
@@ -256,6 +340,71 @@ class ProductionGroundedQueryEngine:
             raise
         except Exception as exc:
             raise QueryExecutionError(_QUERY_EXECUTION_ERROR) from exc
+
+    def _finish_success_safely(
+        self,
+        tracer: RequestTracer,
+        observation: "_RuntimeObservationBuilder",
+    ) -> None:
+        try:
+            tracer.finish_success(observation=observation.to_observation())
+        except Exception:
+            return
+
+    def _finish_failure_safely(
+        self,
+        tracer: RequestTracer,
+        error: BaseException,
+        observation: "_RuntimeObservationBuilder",
+    ) -> None:
+        try:
+            tracer.finish_failure(error, observation=observation.to_observation(error))
+        except Exception:
+            return
+
+
+class _RuntimeObservationBuilder:
+    def __init__(self) -> None:
+        self.semantic_result_count: int | None = None
+        self.lexical_result_count: int | None = None
+        self.fused_result_count: int | None = None
+        self.reranked_result_count: int | None = None
+        self.evidence_count: int | None = None
+        self.citation_count: int | None = None
+        self.citations_valid: bool | None = None
+        self.citation_precision: float | None = None
+        self.citation_recall: float | None = None
+        self.provider_model: str | None = None
+        self.finish_reason: str | None = None
+
+    def record_citation_evaluation(self, answer: ValidatedGroundedAnswer) -> None:
+        precision, recall = evaluate_citations(
+            expected_citation_ids=answer.citation_validation.supported_citation_ids,
+            observed_citation_ids=answer.citation_validation.citation_ids,
+        )
+        self.citation_count = len(answer.citation_validation.citation_ids)
+        self.citations_valid = answer.citation_validation.is_valid
+        self.citation_precision = precision
+        self.citation_recall = recall
+
+    def to_observation(
+        self,
+        error: BaseException | None = None,
+    ) -> RuntimeQueryObservation:
+        return RuntimeQueryObservation(
+            semantic_result_count=self.semantic_result_count,
+            lexical_result_count=self.lexical_result_count,
+            fused_result_count=self.fused_result_count,
+            reranked_result_count=self.reranked_result_count,
+            evidence_count=self.evidence_count,
+            citation_count=self.citation_count,
+            citations_valid=self.citations_valid,
+            citation_precision=self.citation_precision,
+            citation_recall=self.citation_recall,
+            provider_model=self.provider_model,
+            finish_reason=self.finish_reason,
+            failure_category=None if error is None else type(error).__name__,
+        )
 
 
 def _default_reranking_stage(

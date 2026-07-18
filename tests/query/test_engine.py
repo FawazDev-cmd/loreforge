@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from uuid import UUID
 
 import pytest
@@ -16,6 +17,7 @@ from loreforge.generation import (
     ValidatedGroundedAnswer,
     validate_grounded_answer,
 )
+from loreforge.observability import InMemoryMetricsRecorder
 from loreforge.query import (
     NoRelevantEvidenceError,
     ProductionGroundedQueryEngine,
@@ -162,7 +164,13 @@ class EngineParts:
         self.citation_inputs: list[GroundedAnswer] = []
         self.fail_at = fail_at
 
-    def engine(self) -> ProductionGroundedQueryEngine:
+    def engine(
+        self,
+        *,
+        metrics_recorder: InMemoryMetricsRecorder | None = None,
+        monotonic_clock: "FakeMonotonicClock | None" = None,
+        utc_clock: "FakeUtcClock | None" = None,
+    ) -> ProductionGroundedQueryEngine:
         return ProductionGroundedQueryEngine(
             query_embedder=self.embedder,
             semantic_retriever=self.semantic,  # type: ignore[arg-type]
@@ -174,6 +182,10 @@ class EngineParts:
             prompt_builder=self.prompt_builder,
             answer_generator=self.generator,
             citation_enforcer=self.citation_enforcer,
+            metrics_recorder=metrics_recorder,
+            trace_id_factory=lambda: UUID("00000000-0000-0000-0000-000000000901"),
+            monotonic_clock=monotonic_clock,
+            utc_clock=utc_clock,
             semantic_top_k=4,
             lexical_top_k=3,
             hybrid_top_k=2,
@@ -626,3 +638,163 @@ def _chunk_two() -> DocumentChunk:
         chunk_index=1,
         text="Shipping claims require the original receipt.",
     )
+
+
+def test_successful_observed_query_records_runtime_trace() -> None:
+    recorder = InMemoryMetricsRecorder()
+    parts = EngineParts()
+    clock = FakeMonotonicClock(tuple(float(value) for value in range(20)))
+
+    result = parts.engine(
+        metrics_recorder=recorder,
+        monotonic_clock=clock,
+        utc_clock=FakeUtcClock(),
+    ).answer(QUESTION)
+
+    assert result.grounded_answer.answer_text == ANSWER
+    trace = recorder.snapshot()[0]
+    assert trace.request_id == UUID("00000000-0000-0000-0000-000000000901")
+    assert trace.operation == "askme.query"
+    assert trace.started_at == datetime(2026, 1, 1, tzinfo=timezone.utc)
+    assert trace.duration_ms == 21000.0
+    assert trace.success is True
+    assert trace.error_type is None
+    assert [stage.name for stage in trace.stages] == [
+        "validation",
+        "query_embedding",
+        "semantic_retrieval",
+        "lexical_retrieval",
+        "hybrid_fusion",
+        "reranking",
+        "evidence_construction",
+        "prompt_construction",
+        "generation",
+        "citation_validation",
+    ]
+    assert [stage.duration_ms for stage in trace.stages] == [1000.0] * 10
+    assert all(stage.success for stage in trace.stages)
+    observation = trace.observation
+    assert observation is not None
+    assert observation.semantic_result_count == 2
+    assert observation.lexical_result_count == 2
+    assert observation.fused_result_count == 2
+    assert observation.reranked_result_count == 2
+    assert observation.evidence_count == 2
+    assert observation.citation_count == 1
+    assert observation.citations_valid is True
+    assert observation.citation_precision == 1.0
+    assert observation.citation_recall == 1.0
+    assert observation.provider_model == "offline-model"
+    assert observation.finish_reason == "stop"
+    assert observation.failure_category is None
+
+
+def test_observed_no_evidence_failure_records_safe_trace_and_stops_generation() -> None:
+    recorder = InMemoryMetricsRecorder()
+    parts = EngineParts()
+    parts.semantic.results = ()
+    parts.lexical.results = ()
+    clock = FakeMonotonicClock(tuple(float(value) for value in range(9)))
+
+    with pytest.raises(NoRelevantEvidenceError):
+        parts.engine(
+            metrics_recorder=recorder,
+            monotonic_clock=clock,
+            utc_clock=FakeUtcClock(),
+        ).answer(QUESTION)
+
+    assert parts.call_log == ["embed", "semantic", "lexical"]
+    trace = recorder.snapshot()[0]
+    assert trace.success is False
+    assert trace.error_type == "NoRelevantEvidenceError"
+    assert [stage.name for stage in trace.stages] == [
+        "validation",
+        "query_embedding",
+        "semantic_retrieval",
+        "lexical_retrieval",
+    ]
+    assert all(stage.success for stage in trace.stages)
+    observation = trace.observation
+    assert observation is not None
+    assert observation.semantic_result_count == 0
+    assert observation.lexical_result_count == 0
+    assert observation.fused_result_count is None
+    assert observation.reranked_result_count is None
+    assert observation.evidence_count is None
+    assert observation.citation_count is None
+    assert observation.provider_model is None
+    assert observation.finish_reason is None
+    assert observation.failure_category == "NoRelevantEvidenceError"
+
+
+def test_observed_stage_failure_records_failed_stage_without_raw_details() -> None:
+    recorder = InMemoryMetricsRecorder()
+    parts = EngineParts(fail_at="generator")
+    clock = FakeMonotonicClock(tuple(float(value) for value in range(18)))
+
+    with pytest.raises(QueryExecutionError) as exc_info:
+        parts.engine(
+            metrics_recorder=recorder,
+            monotonic_clock=clock,
+            utc_clock=FakeUtcClock(),
+        ).answer(QUESTION)
+
+    assert "raw generation details" not in str(exc_info.value)
+    trace = recorder.snapshot()[0]
+    assert trace.success is False
+    assert trace.error_type == "QueryExecutionError"
+    assert trace.stages[-1].name == "generation"
+    assert trace.stages[-1].success is False
+    assert trace.stages[-1].error_type == "QueryExecutionError"
+    observation = trace.observation
+    assert observation is not None
+    assert observation.semantic_result_count == 2
+    assert observation.lexical_result_count == 2
+    assert observation.fused_result_count == 2
+    assert observation.reranked_result_count == 2
+    assert observation.evidence_count == 2
+    assert observation.citation_count is None
+    assert observation.failure_category == "QueryExecutionError"
+    trace_text = repr(trace)
+    assert "raw generation details" not in trace_text
+    assert ANSWER not in trace_text
+    assert "Refund requests must be submitted within 14 days." not in trace_text
+
+
+def test_observed_blank_question_records_validation_failure() -> None:
+    recorder = InMemoryMetricsRecorder()
+    clock = FakeMonotonicClock((0.0, 1.0, 2.0))
+
+    with pytest.raises(QueryCompositionError):
+        EngineParts().engine(
+            metrics_recorder=recorder,
+            monotonic_clock=clock,
+            utc_clock=FakeUtcClock(),
+        ).answer("   ")
+
+    trace = recorder.snapshot()[0]
+    assert trace.success is False
+    assert trace.error_type == "QueryCompositionError"
+    assert [stage.name for stage in trace.stages] == ["validation"]
+    assert trace.stages[0].success is False
+    assert trace.observation is not None
+    assert trace.observation.failure_category == "QueryCompositionError"
+
+
+class FakeMonotonicClock:
+    def __init__(self, values: tuple[float, ...]) -> None:
+        self._values = values
+        self._index = 0
+
+    def now(self) -> float:
+        if self._index >= len(self._values):
+            value = self._values[-1] + float(self._index - len(self._values) + 1)
+        else:
+            value = self._values[self._index]
+        self._index += 1
+        return value
+
+
+class FakeUtcClock:
+    def now(self) -> datetime:
+        return datetime(2026, 1, 1, tzinfo=timezone.utc)

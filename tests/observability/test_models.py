@@ -5,7 +5,12 @@ from uuid import UUID
 
 import pytest
 
-from loreforge.observability import LatencySummary, RequestTrace, StageMetric
+from loreforge.observability import (
+    LatencySummary,
+    RequestTrace,
+    RuntimeQueryObservation,
+    StageMetric,
+)
 
 REQ1 = UUID("00000000-0000-0000-0000-000000000001")
 REQ2 = UUID("00000000-0000-0000-0000-000000000002")
@@ -189,7 +194,61 @@ def _trace(
     success: bool = True,
     stages: tuple[StageMetric, ...] = (StageMetric("stage", 1.0, True),),
     error_type: str | None = None,
+    observation: RuntimeQueryObservation | None = None,
 ) -> RequestTrace:
     return RequestTrace(
-        request_id, operation, started_at, duration_ms, success, stages, error_type
+        request_id,
+        operation,
+        started_at,
+        duration_ms,
+        success,
+        stages,
+        error_type,
+        observation,
     )
+
+
+def test_runtime_query_observation_accepts_safe_metadata() -> None:
+    observation = RuntimeQueryObservation(
+        semantic_result_count=2,
+        lexical_result_count=1,
+        fused_result_count=2,
+        reranked_result_count=1,
+        evidence_count=1,
+        citation_count=1,
+        citations_valid=True,
+        citation_precision=1.0,
+        citation_recall=1.0,
+        provider_model="offline-model",
+        finish_reason="stop",
+    )
+
+    assert observation.provider_model == "offline-model"
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("semantic_result_count", -1),
+        ("citation_count", 1.2),
+        ("citations_valid", 1),
+        ("citation_precision", 1.1),
+        ("citation_recall", -0.1),
+        ("provider_model", " "),
+        ("finish_reason", " "),
+        ("failure_category", " "),
+    ],
+)
+def test_runtime_query_observation_rejects_invalid_metadata(
+    field: str,
+    value: object,
+) -> None:
+    with pytest.raises(ValueError):
+        RuntimeQueryObservation(**{field: value})
+
+
+def test_request_trace_can_include_runtime_observation() -> None:
+    observation = RuntimeQueryObservation(semantic_result_count=1)
+    trace = _trace(observation=observation)
+
+    assert trace.observation is observation

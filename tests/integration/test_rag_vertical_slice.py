@@ -183,6 +183,21 @@ def test_end_to_end_rag_vertical_slice_through_http(
     assert reranker_provider.requests
     assert llm_provider.requests
     assert PDF_TEXT in llm_provider.requests[0].user_prompt
+    traces = container.metrics_recorder.snapshot()
+    assert len(traces) == 1
+    trace = traces[0]
+    assert trace.operation == "askme.query"
+    assert trace.success is True
+    assert trace.observation is not None
+    assert trace.observation.semantic_result_count == 1
+    assert trace.observation.lexical_result_count == 1
+    assert trace.observation.fused_result_count == 1
+    assert trace.observation.reranked_result_count == 1
+    assert trace.observation.evidence_count == 1
+    assert trace.observation.citation_count == 1
+    assert trace.observation.citations_valid is True
+    assert trace.observation.provider_model == "deterministic-test-llm"
+    assert trace.observation.finish_reason == "stop"
 
 
 def test_indexing_failure_marks_document_failed_and_leaves_indexes_empty(
