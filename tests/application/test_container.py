@@ -21,37 +21,86 @@ class UnavailableEngine:
 
 
 def test_container_requires_exact_catalog_service() -> None:
-    catalog_service = CatalogService(InMemoryCatalogRepository())
-    askme_service = AskMeService(query_engine=UnavailableEngine())
+    services = _services()
 
     with pytest.raises(TypeError, match="CatalogService"):
         ApplicationContainer(  # type: ignore[arg-type]
             catalog_service=object(),
-            askme_service=askme_service,
-            document_indexing_service=_indexing_service(catalog_service),
+            askme_service=services.askme_service,
+            document_indexing_service=services.indexing_service,
+            vector_index=services.vector_index,
+            lexical_index=services.lexical_index,
+            query_engine=None,
         )
 
 
 def test_container_requires_exact_askme_service() -> None:
-    catalog_service = CatalogService(InMemoryCatalogRepository())
+    services = _services()
 
     with pytest.raises(TypeError, match="AskMeService"):
         ApplicationContainer(  # type: ignore[arg-type]
-            catalog_service=catalog_service,
+            catalog_service=services.catalog_service,
             askme_service=object(),
-            document_indexing_service=_indexing_service(catalog_service),
+            document_indexing_service=services.indexing_service,
+            vector_index=services.vector_index,
+            lexical_index=services.lexical_index,
+            query_engine=None,
         )
 
 
 def test_container_requires_exact_document_indexing_service() -> None:
-    catalog_service = CatalogService(InMemoryCatalogRepository())
-    askme_service = AskMeService(query_engine=UnavailableEngine())
+    services = _services()
 
     with pytest.raises(TypeError, match="DocumentIndexingService"):
         ApplicationContainer(  # type: ignore[arg-type]
-            catalog_service=catalog_service,
-            askme_service=askme_service,
+            catalog_service=services.catalog_service,
+            askme_service=services.askme_service,
             document_indexing_service=object(),
+            vector_index=services.vector_index,
+            lexical_index=services.lexical_index,
+            query_engine=None,
+        )
+
+
+def test_container_requires_exact_vector_index() -> None:
+    services = _services()
+
+    with pytest.raises(TypeError, match="InMemoryVectorIndex"):
+        ApplicationContainer(  # type: ignore[arg-type]
+            catalog_service=services.catalog_service,
+            askme_service=services.askme_service,
+            document_indexing_service=services.indexing_service,
+            vector_index=object(),
+            lexical_index=services.lexical_index,
+            query_engine=None,
+        )
+
+
+def test_container_requires_exact_lexical_index() -> None:
+    services = _services()
+
+    with pytest.raises(TypeError, match="InMemoryBM25Index"):
+        ApplicationContainer(  # type: ignore[arg-type]
+            catalog_service=services.catalog_service,
+            askme_service=services.askme_service,
+            document_indexing_service=services.indexing_service,
+            vector_index=services.vector_index,
+            lexical_index=object(),
+            query_engine=None,
+        )
+
+
+def test_container_rejects_invalid_query_engine() -> None:
+    services = _services()
+
+    with pytest.raises(TypeError, match="ProductionGroundedQueryEngine"):
+        ApplicationContainer(  # type: ignore[arg-type]
+            catalog_service=services.catalog_service,
+            askme_service=services.askme_service,
+            document_indexing_service=services.indexing_service,
+            vector_index=services.vector_index,
+            lexical_index=services.lexical_index,
+            query_engine=object(),
         )
 
 
@@ -65,19 +114,23 @@ def test_container_is_immutable() -> None:
 
 
 def test_container_retains_service_identity() -> None:
-    catalog_service = CatalogService(InMemoryCatalogRepository())
-    askme_service = AskMeService(query_engine=UnavailableEngine())
-    indexing_service = _indexing_service(catalog_service)
+    services = _services()
 
     container = ApplicationContainer(
-        catalog_service=catalog_service,
-        askme_service=askme_service,
-        document_indexing_service=indexing_service,
+        catalog_service=services.catalog_service,
+        askme_service=services.askme_service,
+        document_indexing_service=services.indexing_service,
+        vector_index=services.vector_index,
+        lexical_index=services.lexical_index,
+        query_engine=None,
     )
 
-    assert container.catalog_service is catalog_service
-    assert container.askme_service is askme_service
-    assert container.document_indexing_service is indexing_service
+    assert container.catalog_service is services.catalog_service
+    assert container.askme_service is services.askme_service
+    assert container.document_indexing_service is services.indexing_service
+    assert container.vector_index is services.vector_index
+    assert container.lexical_index is services.lexical_index
+    assert container.query_engine is None
 
 
 def test_container_has_no_fastapi_or_pydantic_imports() -> None:
@@ -88,19 +141,31 @@ def test_container_has_no_fastapi_or_pydantic_imports() -> None:
     assert "pydantic" not in source.lower()
 
 
+class Services:
+    def __init__(self) -> None:
+        self.catalog_service = CatalogService(InMemoryCatalogRepository())
+        self.askme_service = AskMeService(query_engine=UnavailableEngine())
+        self.vector_index = InMemoryVectorIndex()
+        self.lexical_index = InMemoryBM25Index()
+        self.indexing_service = DocumentIndexingService(
+            catalog_service=self.catalog_service,
+            embedding_provider=None,
+            vector_index=self.vector_index,
+            lexical_index=self.lexical_index,
+        )
+
+
 def _container() -> ApplicationContainer:
-    catalog_service = CatalogService(InMemoryCatalogRepository())
+    services = _services()
     return ApplicationContainer(
-        catalog_service=catalog_service,
-        askme_service=AskMeService(query_engine=UnavailableEngine()),
-        document_indexing_service=_indexing_service(catalog_service),
+        catalog_service=services.catalog_service,
+        askme_service=services.askme_service,
+        document_indexing_service=services.indexing_service,
+        vector_index=services.vector_index,
+        lexical_index=services.lexical_index,
+        query_engine=None,
     )
 
 
-def _indexing_service(catalog_service: CatalogService) -> DocumentIndexingService:
-    return DocumentIndexingService(
-        catalog_service=catalog_service,
-        embedding_provider=None,
-        vector_index=InMemoryVectorIndex(),
-        lexical_index=InMemoryBM25Index(),
-    )
+def _services() -> Services:
+    return Services()

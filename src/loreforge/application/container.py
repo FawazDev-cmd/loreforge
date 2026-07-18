@@ -5,6 +5,9 @@ from dataclasses import dataclass
 from loreforge.askme import AskMeService
 from loreforge.catalog import CatalogService
 from loreforge.indexing import DocumentIndexingService
+from loreforge.query import ProductionGroundedQueryEngine
+from loreforge.retrieval.bm25 import InMemoryBM25Index
+from loreforge.vector_index import InMemoryVectorIndex
 
 
 @dataclass(frozen=True, slots=True)
@@ -14,6 +17,9 @@ class ApplicationContainer:
     catalog_service: CatalogService
     askme_service: AskMeService
     document_indexing_service: DocumentIndexingService
+    vector_index: InMemoryVectorIndex
+    lexical_index: InMemoryBM25Index
+    query_engine: ProductionGroundedQueryEngine | None
 
     def __post_init__(self) -> None:
         if type(self.catalog_service) is not CatalogService:
@@ -24,4 +30,16 @@ class ApplicationContainer:
             raise TypeError(msg)
         if type(self.document_indexing_service) is not DocumentIndexingService:
             msg = "document_indexing_service must be a DocumentIndexingService"
+            raise TypeError(msg)
+        if type(self.vector_index) is not InMemoryVectorIndex:
+            msg = "vector_index must be an InMemoryVectorIndex"
+            raise TypeError(msg)
+        if type(self.lexical_index) is not InMemoryBM25Index:
+            msg = "lexical_index must be an InMemoryBM25Index"
+            raise TypeError(msg)
+        if (
+            self.query_engine is not None
+            and type(self.query_engine) is not ProductionGroundedQueryEngine
+        ):
+            msg = "query_engine must be a ProductionGroundedQueryEngine or None"
             raise TypeError(msg)

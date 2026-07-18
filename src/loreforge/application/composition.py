@@ -7,9 +7,12 @@ from loreforge.application.container import ApplicationContainer
 from loreforge.askme import AskMeService, AskMeUnavailableError
 from loreforge.catalog import CatalogService, InMemoryCatalogRepository
 from loreforge.documents.ingestion import ingest_pdf
-from loreforge.embeddings.provider import EmbeddingProvider
+from loreforge.embeddings.provider import EmbeddingProvider, QueryEmbeddingProvider
+from loreforge.generation.provider import LLMProvider
 from loreforge.generation.validation_models import ValidatedGroundedAnswer
 from loreforge.indexing import DocumentIndexingService, PdfIngestor
+from loreforge.query import ProductionGroundedQueryEngine
+from loreforge.reranking import RerankerProvider
 from loreforge.retrieval.bm25 import InMemoryBM25Index
 from loreforge.vector_index import InMemoryVectorIndex
 
@@ -30,8 +33,15 @@ class CompositionFactories:
     askme_service_factory: Callable[[], AskMeService] | None = None
     document_ingestor_factory: Callable[[], PdfIngestor] | None = None
     document_embedding_provider_factory: Callable[[], EmbeddingProvider] | None = None
+    query_embedding_provider_factory: Callable[[], QueryEmbeddingProvider] | None = None
+    reranker_provider_factory: Callable[[], RerankerProvider] | None = None
+    llm_provider_factory: Callable[[], LLMProvider] | None = None
     document_indexing_service_factory: (
-        Callable[[CatalogService], DocumentIndexingService] | None
+        Callable[
+            [CatalogService, InMemoryVectorIndex, InMemoryBM25Index],
+            DocumentIndexingService,
+        ]
+        | None
     ) = None
 
 
@@ -41,43 +51,69 @@ def create_application_container(
 ) -> ApplicationContainer:
     """Create one isolated set of application services."""
     catalog_service = CatalogService(InMemoryCatalogRepository())
-    askme_service = _create_askme_service(factories)
+    vector_index = InMemoryVectorIndex()
+    lexical_index = InMemoryBM25Index()
     document_indexing_service = _create_document_indexing_service(
         catalog_service=catalog_service,
+        vector_index=vector_index,
+        lexical_index=lexical_index,
         factories=factories,
+    )
+    query_engine = _create_query_engine(
+        vector_index=vector_index,
+        lexical_index=lexical_index,
+        factories=factories,
+    )
+    askme_service = _create_askme_service(
+        factories=factories,
+        query_engine=query_engine,
     )
     return ApplicationContainer(
         catalog_service=catalog_service,
         askme_service=askme_service,
         document_indexing_service=document_indexing_service,
+        vector_index=vector_index,
+        lexical_index=lexical_index,
+        query_engine=query_engine,
     )
 
 
-def _create_askme_service(factories: CompositionFactories | None) -> AskMeService:
-    if factories is None or factories.askme_service_factory is None:
-        return _unavailable_askme_service()
+def _create_askme_service(
+    *,
+    factories: CompositionFactories | None,
+    query_engine: ProductionGroundedQueryEngine | None,
+) -> AskMeService:
+    if factories is not None and factories.askme_service_factory is not None:
+        try:
+            service = factories.askme_service_factory()
+        except AskMeUnavailableError:
+            return _unavailable_askme_service()
+        if type(service) is not AskMeService:
+            msg = "askme_service_factory must return an AskMeService"
+            raise TypeError(msg)
+        return service
 
-    try:
-        service = factories.askme_service_factory()
-    except AskMeUnavailableError:
+    if query_engine is None:
         return _unavailable_askme_service()
-
-    if type(service) is not AskMeService:
-        msg = "askme_service_factory must return an AskMeService"
-        raise TypeError(msg)
-    return service
+    return AskMeService(query_engine=query_engine)
 
 
 def _create_document_indexing_service(
     *,
     catalog_service: CatalogService,
+    vector_index: InMemoryVectorIndex,
+    lexical_index: InMemoryBM25Index,
     factories: CompositionFactories | None,
 ) -> DocumentIndexingService:
     if (
         factories is not None
         and factories.document_indexing_service_factory is not None
     ):
-        service = factories.document_indexing_service_factory(catalog_service)
+        service = factories.document_indexing_service_factory(
+            catalog_service,
+            vector_index,
+            lexical_index,
+        )
         if type(service) is not DocumentIndexingService:
             msg = (
                 "document_indexing_service_factory must return "
@@ -86,8 +122,6 @@ def _create_document_indexing_service(
             raise TypeError(msg)
         return service
 
-    vector_index = InMemoryVectorIndex()
-    lexical_index = InMemoryBM25Index()
     ingestor = _create_document_ingestor(factories)
     embedding_provider = _create_document_embedding_provider(factories)
     return DocumentIndexingService(
@@ -96,6 +130,34 @@ def _create_document_indexing_service(
         embedding_provider=embedding_provider,
         vector_index=vector_index,
         lexical_index=lexical_index,
+    )
+
+
+def _create_query_engine(
+    *,
+    vector_index: InMemoryVectorIndex,
+    lexical_index: InMemoryBM25Index,
+    factories: CompositionFactories | None,
+) -> ProductionGroundedQueryEngine | None:
+    if factories is None:
+        return None
+    if (
+        factories.query_embedding_provider_factory is None
+        or factories.reranker_provider_factory is None
+        or factories.llm_provider_factory is None
+    ):
+        return None
+
+    query_embedder = factories.query_embedding_provider_factory()
+    reranker = factories.reranker_provider_factory()
+    answer_generator = factories.llm_provider_factory()
+
+    return ProductionGroundedQueryEngine(
+        query_embedder=query_embedder,
+        semantic_retriever=vector_index,
+        lexical_retriever=lexical_index,
+        reranker=reranker,
+        answer_generator=answer_generator,
     )
 
 
