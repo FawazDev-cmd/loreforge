@@ -1,15 +1,101 @@
 # LoreForge
 
-LoreForge is an early-stage Python project focused on establishing a small, tested API foundation for future document intelligence work. The current scope is intentionally limited to a minimal FastAPI application and basic project tooling.
+LoreForge is a Python 3.13, FastAPI-based backend for a production-minded retrieval-augmented assistant named AskMe. It is a public portfolio project focused on enterprise RAG engineering: ingestion, retrieval, grounded generation, citation enforcement, evaluation, observability, testing, and reproducible local development.
 
-## Local setup
+The backend is intentionally local-first and zero-cost by default. The application starts without secrets or live providers, exposes health/admin/document/AskMe API routes, and keeps `/ask` honestly degraded until concrete embedding, reranking, and LLM providers are injected.
 
-1. Install `uv` if it is not already available.
-2. Create the project environment and install all dependencies:
+## Current Capabilities
 
-   ```bash
-   uv sync --all-groups
-   ```
+Implemented and verified:
+
+- FastAPI application startup and `/health`
+- PDF upload validation
+- page-aware PDF parsing
+- deterministic text normalization
+- deterministic citation-aware chunking
+- ingestion orchestration
+- document embedding contracts and local Sentence Transformers provider
+- in-memory vector index
+- in-memory BM25 lexical index
+- hybrid retrieval with Reciprocal Rank Fusion
+- cross-encoder reranking contract and local provider
+- grounded evidence-context and prompt construction
+- provider-independent generation contract
+- OpenRouter generation adapter
+- citation extraction and enforcement
+- validated grounded-answer models
+- AskMe service and API route
+- admin catalog API
+- document indexing API that populates shared semantic and lexical indexes
+- deterministic runtime observability for configured AskMe queries
+- deterministic evaluation primitives
+- offline integration tests for the configured RAG vertical slice
+
+Not enabled by default:
+
+- live LLM calls
+- automatic environment-variable based provider wiring
+- persistence across process restarts
+- authentication or authorization
+- Docker or CI execution files
+- frontend UI
+
+## Repository Structure
+
+```text
+src/loreforge/
+  api/              FastAPI transport routes
+  application/      application container and composition root
+  askme/            framework-independent AskMe service contract
+  catalog/          in-memory document lifecycle catalog
+  documents/        upload validation, parsing, normalization, chunking, ingestion
+  embeddings/       embedding models, provider protocol, local provider, pipeline
+  evaluation/       deterministic offline/runtime-compatible evaluation helpers
+  generation/       evidence, prompts, provider contracts, OpenRouter, citations
+  indexing/         document ingestion-to-index orchestration
+  observability/    traces, metrics recorder, clocks, summaries
+  query/            production grounded-query composition engine
+  reranking/        reranker models, provider protocol, local cross-encoder
+  retrieval/        semantic, BM25, hybrid/RRF retrieval models and logic
+  vector_index/     in-memory vector indexing and similarity
+
+tests/              offline unit, service, API, and integration tests
+docs/               focused design and workflow documentation
+.ai/                ignored project context and milestone state
+```
+
+## Architecture
+
+LoreForge keeps business logic framework-independent where practical. FastAPI routes are transport adapters that delegate to application services. Runtime state is owned by one immutable `ApplicationContainer` per application instance.
+
+Default startup creates:
+
+- `CatalogService` backed by `InMemoryCatalogRepository`
+- shared `InMemoryVectorIndex`
+- shared `InMemoryBM25Index`
+- `DocumentIndexingService`
+- shared `InMemoryMetricsRecorder`
+- degraded `AskMeService` unless all query providers are supplied through `CompositionFactories`
+
+Configured startup can inject:
+
+- document embedding provider
+- query embedding provider
+- reranker provider
+- LLM provider
+- custom AskMe service or document indexing service for tests/deployments
+
+The default app does not instantiate local models, read provider credentials, call OpenRouter, or make network requests during import/startup.
+
+## Local Setup
+
+Install `uv`, then create the environment:
+
+```bash
+uv sync --all-groups
+```
+
+For locked verification runs, use the commands in [Verification](#verification).
 
 ## Run the API
 
@@ -17,16 +103,258 @@ LoreForge is an early-stage Python project focused on establishing a small, test
 uv run uvicorn loreforge.main:app --app-dir src
 ```
 
-## Run tests
+Health check:
 
 ```bash
-uv run pytest
+curl http://127.0.0.1:8000/health
 ```
 
-## Lint and type-check
+Expected response:
+
+```json
+{
+  "status": "healthy",
+  "service": "loreforge"
+}
+```
+
+Interactive OpenAPI docs are available from FastAPI at `/docs` when the development server is running.
+
+## Environment Variables and Provider Configuration
+
+The default application reads no environment variables.
+
+Provider-capable code exists, but provider instances must currently be constructed and injected explicitly through `CompositionFactories`. This keeps local development deterministic and prevents accidental paid or network activity.
+
+Relevant provider configuration contracts:
+
+- `LocalSentenceTransformerProvider(model_name="sentence-transformers/all-MiniLM-L6-v2", batch_size=32)` lazily loads its model only when embedding is requested.
+- `LocalCrossEncoderReranker(model_name="cross-encoder/ms-marco-MiniLM-L6-v2", batch_size=32)` lazily loads its model only when reranking is requested.
+- `OpenRouterConfig(api_key, model, base_url="https://openrouter.ai/api/v1", timeout_seconds=30.0)` validates HTTPS base URL, nonblank API key/model, and positive timeout. Its `repr` excludes the API key.
+
+There is no automatic `OPENROUTER_API_KEY`, model-name, or `.env` loading yet. A future composition-root milestone should add explicit runtime configuration without silently enabling providers.
+
+## API Overview
+
+### Health
+
+`GET /health`
+
+Purpose: confirm the FastAPI application is running.
+
+Responses:
+
+- `200` with service health payload.
+
+### Document Upload Boundary
+
+`POST /documents/upload`
+
+Purpose: validate and accept a PDF upload boundary without indexing it.
+
+Request: multipart PDF file.
+
+Responses:
+
+- `201` accepted upload metadata
+- `400` invalid upload payload
+- `413` upload exceeds size limit
+- `415` unsupported media type or invalid PDF
+
+### Admin Catalog
+
+`GET /admin/documents`
+
+Purpose: list catalog entries in insertion order.
+
+Responses:
+
+- `200` ordered document list
+- `503` if application services are unavailable
+
+`GET /admin/documents/{document_id}`
+
+Purpose: fetch one catalog entry.
+
+Responses:
+
+- `200` document metadata
+- `404` document not found
+- `422` invalid UUID
+- `503` if application services are unavailable
+
+`POST /admin/documents`
+
+Purpose: register document metadata before indexing.
+
+Request JSON:
+
+```json
+{
+  "filename": "example.pdf",
+  "page_count": 0,
+  "chunk_count": 0
+}
+```
+
+Responses:
+
+- `201` created catalog entry with `UPLOADED` status
+- `422` validation failure
+- `503` if application services are unavailable
+
+`POST /admin/documents/{document_id}/index`
+
+Purpose: ingest a registered PDF, create chunks, embed chunks, populate shared vector/BM25 indexes, and transition catalog status.
+
+Request: multipart PDF file.
+
+Responses:
+
+- `200` indexed chunk counts
+- `404` document not found
+- `409` lifecycle does not allow indexing or document is already indexed
+- `422` invalid PDF upload
+- `503` indexing provider/runtime unavailable
+
+Lifecycle helper routes:
+
+- `POST /admin/documents/{document_id}/ingesting`
+- `POST /admin/documents/{document_id}/ready`
+- `POST /admin/documents/{document_id}/failed`
+- `POST /admin/documents/{document_id}/deleted`
+
+Purpose: exercise catalog lifecycle transitions through the API.
+
+Responses:
+
+- `200` updated document metadata
+- `404` document not found
+- `409` invalid lifecycle transition
+- `422` validation failure
+
+### AskMe
+
+`POST /ask`
+
+Purpose: answer a user question with a citation-validated grounded answer when the application has configured providers and indexed evidence.
+
+Request JSON:
+
+```json
+{
+  "question": "Which retrieval methods does LoreForge combine?"
+}
+```
+
+Responses:
+
+- `200` answer with source citations
+- `422` blank or invalid question
+- `502` a safely grounded answer could not be produced
+- `503` AskMe is unavailable, including default degraded startup
+
+Default runtime behavior: `/ask` returns `503` until query embedding, reranking, and LLM providers are injected and relevant documents are indexed.
+
+## Indexing Workflow
+
+A configured runtime can prove the backend vertical slice through these steps:
+
+1. Register metadata with `POST /admin/documents`.
+2. Index a PDF with `POST /admin/documents/{document_id}/index`.
+3. The indexing service validates the PDF, parses pages, normalizes text, chunks content, embeds chunks, writes to the shared vector index, writes to the shared BM25 index, and marks the document `READY`.
+4. If indexing fails after ingestion begins, semantic and lexical index writes are rolled back and the catalog entry is marked `FAILED`.
+
+All indexing state is in memory today.
+
+## AskMe Workflow
+
+When configured, `POST /ask` follows this path:
+
+```text
+question
+  -> query embedding
+  -> semantic retrieval and BM25 retrieval
+  -> Reciprocal Rank Fusion
+  -> reranking
+  -> evidence-context construction
+  -> grounded prompt construction
+  -> provider-independent answer generation
+  -> citation enforcement
+  -> API response
+```
+
+The runtime records safe observability metadata for configured query executions: trace ID, UTC start time, total latency, stage latencies, retrieval/evidence/citation counts, citation validity, provider model, finish reason, and safe failure category. It does not record raw prompts, raw evidence text, answer text, credentials, headers, or provider payloads.
+
+## Testing
+
+Run all tests:
 
 ```bash
-uv run ruff check .
-uv run ruff format --check .
-uv run mypy src
+uv run --locked pytest
 ```
+
+The default test suite is offline and deterministic. Provider and integration boundaries use fakes or injected transports; tests must not require live model downloads, OpenRouter, network access, sleeps, or randomness.
+
+## Linting and Type Checking
+
+```bash
+uv run --locked ruff check .
+uv run --locked ruff format --check .
+uv run --locked mypy src
+```
+
+Whitespace check before handoff:
+
+```bash
+git diff --check
+```
+
+## Verification
+
+Expected local verification pipeline:
+
+```bash
+uv run --locked pytest
+uv run --locked ruff check .
+uv run --locked ruff format --check .
+uv run --locked mypy src
+git diff --check
+```
+
+## Docker Usage
+
+There is currently no `Dockerfile`, compose file, or container entrypoint in the repository. Docker reproducibility is a planned future hardening step, not a verified current capability.
+
+## CI Readiness
+
+There is currently no CI configuration in the repository. A future CI workflow should run the same verification pipeline documented above:
+
+- `uv run --locked pytest`
+- `uv run --locked ruff check .`
+- `uv run --locked ruff format --check .`
+- `uv run --locked mypy src`
+
+## Deployment Prerequisites
+
+Before deploying beyond local development, add and verify:
+
+- explicit provider configuration loading
+- secret management outside source control
+- production process management
+- persistence for catalog/index state if restart durability is required
+- authentication and authorization for admin/document endpoints
+- Docker or equivalent reproducible runtime packaging
+- CI verification gates
+- operational logging policy and external metrics/export adapters if needed
+
+## Known Limitations
+
+- Runtime catalog, vector index, BM25 index, and metrics recorder are in memory only.
+- Default `/ask` is intentionally unavailable without injected providers.
+- Local embedding/reranking providers may download or load model artifacts when used outside the default app.
+- OpenRouter exists as an adapter but is not wired by default and requires explicit credentials/configuration.
+- No authentication or authorization is implemented.
+- No persistent document storage is implemented.
+- No Docker or CI files are present.
+- Evaluation primitives are deterministic, but benchmark retrieval quality still requires ground-truth evaluation cases.
