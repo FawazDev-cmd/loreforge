@@ -15,6 +15,7 @@ from loreforge.observability import InMemoryMetricsRecorder
 from loreforge.query import ProductionGroundedQueryEngine
 from loreforge.reranking import RerankerProvider
 from loreforge.retrieval.bm25 import InMemoryBM25Index
+from loreforge.settings import LoreForgeSettings, load_settings
 from loreforge.vector_index import InMemoryVectorIndex
 
 _UNAVAILABLE_DETAIL = "AskMe is temporarily unavailable."
@@ -49,8 +50,10 @@ class CompositionFactories:
 def create_application_container(
     *,
     factories: CompositionFactories | None = None,
+    settings: LoreForgeSettings | None = None,
 ) -> ApplicationContainer:
     """Create one isolated set of application services."""
+    runtime_settings = load_settings() if settings is None else settings
     catalog_service = CatalogService(InMemoryCatalogRepository())
     vector_index = InMemoryVectorIndex()
     lexical_index = InMemoryBM25Index()
@@ -79,6 +82,7 @@ def create_application_container(
         lexical_index=lexical_index,
         query_engine=query_engine,
         metrics_recorder=metrics_recorder,
+        settings=runtime_settings,
     )
 
 

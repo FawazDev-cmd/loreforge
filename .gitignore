@@ -12,5 +12,6 @@ build/
 dist/
 .env
 .env.*
+!.env.example
 # Local AI development context
 .ai/

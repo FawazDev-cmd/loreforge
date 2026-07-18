@@ -1,6 +1,6 @@
 """Shared application service container."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from loreforge.askme import AskMeService
 from loreforge.catalog import CatalogService
@@ -8,6 +8,7 @@ from loreforge.indexing import DocumentIndexingService
 from loreforge.observability import InMemoryMetricsRecorder
 from loreforge.query import ProductionGroundedQueryEngine
 from loreforge.retrieval.bm25 import InMemoryBM25Index
+from loreforge.settings import LoreForgeSettings
 from loreforge.vector_index import InMemoryVectorIndex
 
 
@@ -22,6 +23,7 @@ class ApplicationContainer:
     lexical_index: InMemoryBM25Index
     query_engine: ProductionGroundedQueryEngine | None
     metrics_recorder: InMemoryMetricsRecorder
+    settings: LoreForgeSettings = field(default_factory=LoreForgeSettings)
 
     def __post_init__(self) -> None:
         if type(self.catalog_service) is not CatalogService:
@@ -47,4 +49,7 @@ class ApplicationContainer:
             raise TypeError(msg)
         if type(self.metrics_recorder) is not InMemoryMetricsRecorder:
             msg = "metrics_recorder must be an InMemoryMetricsRecorder"
+            raise TypeError(msg)
+        if type(self.settings) is not LoreForgeSettings:
+            msg = "settings must be a LoreForgeSettings"
             raise TypeError(msg)

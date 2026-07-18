@@ -34,7 +34,7 @@ Implemented and verified:
 Not enabled by default:
 
 - live LLM calls
-- automatic environment-variable based provider wiring
+- centralized typed settings and startup validation
 - persistence across process restarts
 - authentication or authorization
 - Docker or CI execution files
@@ -122,18 +122,43 @@ Interactive OpenAPI docs are available from FastAPI at `/docs` when the developm
 
 ## Environment Variables and Provider Configuration
 
-The default application reads no environment variables.
+LoreForge now has one centralized typed settings layer in `loreforge.settings`. Runtime configuration is loaded through `load_settings()` and validated at application-container startup. Do not add scattered `os.getenv()` or duplicated parsing logic elsewhere in the codebase.
 
-Provider-capable code exists, but provider instances must currently be constructed and injected explicitly through `CompositionFactories`. This keeps local development deterministic and prevents accidental paid or network activity.
+The default settings keep LoreForge local-first and zero-cost:
 
-Relevant provider configuration contracts:
+- environment: `development`
+- provider selections: `disabled`
+- storage provider: `local`
+- authentication provider: `disabled`
+- metrics recording: enabled in memory
 
-- `LocalSentenceTransformerProvider(model_name="sentence-transformers/all-MiniLM-L6-v2", batch_size=32)` lazily loads its model only when embedding is requested.
-- `LocalCrossEncoderReranker(model_name="cross-encoder/ms-marco-MiniLM-L6-v2", batch_size=32)` lazily loads its model only when reranking is requested.
-- `OpenRouterConfig(api_key, model, base_url="https://openrouter.ai/api/v1", timeout_seconds=30.0)` validates HTTPS base URL, nonblank API key/model, and positive timeout. Its `repr` excludes the API key.
+Copy `.env.example` to `.env` for local experimentation, then fill only the values you need. `.env` and `.env.*` are ignored by git. Never commit real provider keys, database URLs, service-role keys, JWT secrets, or private deployment values.
 
-There is no automatic `OPENROUTER_API_KEY`, model-name, or `.env` loading yet. A future composition-root milestone should add explicit runtime configuration without silently enabling providers.
+Environment switching is configuration-driven with `LOREFORGE_ENVIRONMENT`:
 
+- `development` for normal local work
+- `testing` for deterministic test/runtime configuration
+- `production` for deployed runtime settings
+
+Production mode fails fast unless `LOREFORGE_PUBLIC_BASE_URL` is configured. Provider, storage, and auth secrets are required only when their corresponding provider is explicitly enabled.
+
+Important provider behavior:
+
+- Gemini settings are defined for future Day 33 adapters, but Gemini runtime is not implemented yet.
+- OpenRouter settings are defined and the existing adapter remains available, but it is not automatically wired by default.
+- Local embedding/reranking model names are configurable, but local models still load lazily only when their providers are explicitly constructed.
+- The default `/ask` route still returns `503` until concrete query embedding, reranking, LLM providers, and indexed evidence are supplied through the composition root.
+
+Key configuration groups documented in `.env.example`:
+
+- application identity and environment
+- API host, port, and future CORS origins
+- logging controls
+- provider selections and provider-specific placeholders
+- PostgreSQL URL, pool sizing, and migration placeholders
+- local/Supabase storage placeholders
+- Supabase Auth/JWT placeholders
+- observability toggles
 ## API Overview
 
 ### Health
