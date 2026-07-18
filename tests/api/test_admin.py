@@ -6,13 +6,54 @@ import pytest
 from fastapi.testclient import TestClient
 
 from loreforge.api import admin
-from loreforge.catalog import CatalogService, InMemoryCatalogRepository
+from loreforge.catalog import (
+    CatalogService,
+    CatalogServiceError,
+    InMemoryCatalogRepository,
+)
+from loreforge.documents.upload import UnsupportedDocumentError
+from loreforge.indexing import (
+    DocumentAlreadyIndexedError,
+    DocumentIndexingExecutionError,
+    IndexedDocumentResult,
+)
 from loreforge.main import app
 
 DOC1 = UUID("00000000-0000-0000-0000-000000000001")
 DOC2 = UUID("00000000-0000-0000-0000-000000000002")
 MISSING = UUID("00000000-0000-0000-0000-000000000099")
 UPLOADED_AT = datetime(2026, 1, 1, tzinfo=timezone.utc)
+
+
+class FakeIndexingService:
+    def __init__(self, error: Exception | None = None) -> None:
+        self.error = error
+        self.calls: list[dict[str, object]] = []
+
+    def index_pdf(
+        self,
+        *,
+        document_id: UUID,
+        filename: str | None,
+        media_type: str | None,
+        content: bytes,
+    ) -> IndexedDocumentResult:
+        self.calls.append(
+            {
+                "document_id": document_id,
+                "filename": filename,
+                "media_type": media_type,
+                "content": content,
+            }
+        )
+        if self.error is not None:
+            raise self.error
+        return IndexedDocumentResult(
+            document_id=document_id,
+            chunk_count=2,
+            semantic_indexed_count=2,
+            lexical_indexed_count=2,
+        )
 
 
 @pytest.fixture
@@ -214,3 +255,103 @@ def _create_payload(
         "page_count": page_count,
         "chunk_count": chunk_count,
     }
+
+
+def test_index_document_success_delegates_to_app_state_service(
+    client: TestClient,
+) -> None:
+    service = FakeIndexingService()
+    app.dependency_overrides[admin.get_document_indexing_service] = lambda: service
+
+    response = client.post(
+        f"/admin/documents/{DOC1}/index",
+        files={"file": ("policy.pdf", b"%PDF- fake", "application/pdf")},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "document_id": str(DOC1),
+        "chunk_count": 2,
+        "semantic_indexed_count": 2,
+        "lexical_indexed_count": 2,
+    }
+    assert service.calls == [
+        {
+            "document_id": DOC1,
+            "filename": "policy.pdf",
+            "media_type": "application/pdf",
+            "content": b"%PDF- fake",
+        }
+    ]
+
+
+def test_index_document_unknown_document_returns_404(client: TestClient) -> None:
+    service = FakeIndexingService(CatalogServiceError("document_id does not exist"))
+    app.dependency_overrides[admin.get_document_indexing_service] = lambda: service
+
+    response = client.post(
+        f"/admin/documents/{MISSING}/index",
+        files={"file": ("policy.pdf", b"%PDF- fake", "application/pdf")},
+    )
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "document not found"}
+
+
+def test_index_document_already_ready_returns_409(client: TestClient) -> None:
+    service = FakeIndexingService(DocumentAlreadyIndexedError("raw duplicate detail"))
+    app.dependency_overrides[admin.get_document_indexing_service] = lambda: service
+
+    response = client.post(
+        f"/admin/documents/{DOC1}/index",
+        files={"file": ("policy.pdf", b"%PDF- fake", "application/pdf")},
+    )
+
+    assert response.status_code == 409
+    assert response.json() == {"detail": "document is already indexed"}
+
+
+def test_index_document_invalid_lifecycle_returns_409(client: TestClient) -> None:
+    service = FakeIndexingService(CatalogServiceError("cannot transition secret"))
+    app.dependency_overrides[admin.get_document_indexing_service] = lambda: service
+
+    response = client.post(
+        f"/admin/documents/{DOC1}/index",
+        files={"file": ("policy.pdf", b"%PDF- fake", "application/pdf")},
+    )
+
+    assert response.status_code == 409
+    assert response.json() == {"detail": "document lifecycle does not allow indexing"}
+
+
+def test_index_document_invalid_upload_returns_422(client: TestClient) -> None:
+    service = FakeIndexingService(UnsupportedDocumentError("raw upload detail"))
+    app.dependency_overrides[admin.get_document_indexing_service] = lambda: service
+
+    response = client.post(
+        f"/admin/documents/{DOC1}/index",
+        files={"file": ("policy.txt", b"not pdf", "text/plain")},
+    )
+
+    assert response.status_code == 422
+    assert response.json() == {"detail": "invalid PDF upload"}
+
+
+def test_index_document_runtime_failure_returns_safe_503(client: TestClient) -> None:
+    service = FakeIndexingService(DocumentIndexingExecutionError("raw model detail"))
+    app.dependency_overrides[admin.get_document_indexing_service] = lambda: service
+
+    response = client.post(
+        f"/admin/documents/{DOC1}/index",
+        files={"file": ("policy.pdf", b"%PDF- fake", "application/pdf")},
+    )
+
+    assert response.status_code == 503
+    assert response.json() == {"detail": "document indexing is temporarily unavailable"}
+    assert "raw model detail" not in response.text
+
+
+def test_index_document_missing_file_returns_422(client: TestClient) -> None:
+    response = client.post(f"/admin/documents/{DOC1}/index")
+
+    assert response.status_code == 422

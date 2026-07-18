@@ -18,7 +18,10 @@ from loreforge.generation.validation_models import (
     CitationValidationResult,
     ValidatedGroundedAnswer,
 )
+from loreforge.indexing import DocumentIndexingService
 from loreforge.main import create_app
+from loreforge.retrieval.bm25 import InMemoryBM25Index
+from loreforge.vector_index import InMemoryVectorIndex
 
 REQUEST_ID = UUID("00000000-0000-0000-0000-000000000001")
 DOCUMENT_ID = UUID("00000000-0000-0000-0000-000000000201")
@@ -54,6 +57,7 @@ def test_default_composition_creates_application_container() -> None:
     assert type(container) is ApplicationContainer
     assert type(container.catalog_service) is CatalogService
     assert type(container.askme_service) is AskMeService
+    assert type(container.document_indexing_service) is DocumentIndexingService
 
 
 def test_default_askme_service_is_safely_unavailable() -> None:
@@ -245,9 +249,11 @@ def _container(
     *,
     askme_service: AskMeService | None = None,
 ) -> ApplicationContainer:
+    catalog_service = CatalogService(InMemoryCatalogRepository())
     return ApplicationContainer(
-        catalog_service=CatalogService(InMemoryCatalogRepository()),
+        catalog_service=catalog_service,
         askme_service=askme_service or _askme_service(),
+        document_indexing_service=_indexing_service(catalog_service),
     )
 
 
@@ -304,4 +310,50 @@ def _validated_answer() -> ValidatedGroundedAnswer:
             is_valid=True,
         ),
         cited_sources=(source,),
+    )
+
+
+def test_composition_uses_supplied_indexing_service_once() -> None:
+    calls = 0
+
+    def factory(catalog_service: CatalogService) -> DocumentIndexingService:
+        nonlocal calls
+        calls += 1
+        return _indexing_service(catalog_service)
+
+    container = create_application_container(
+        factories=CompositionFactories(document_indexing_service_factory=factory)
+    )
+
+    assert calls == 1
+    assert type(container.document_indexing_service) is DocumentIndexingService
+
+
+def test_composition_rejects_invalid_indexing_service_factory_result() -> None:
+    def factory(catalog_service: CatalogService) -> DocumentIndexingService:
+        return object()  # type: ignore[return-value]
+
+    with pytest.raises(TypeError, match="DocumentIndexingService"):
+        create_application_container(
+            factories=CompositionFactories(document_indexing_service_factory=factory)
+        )
+
+
+def test_indexing_service_reused_for_app_lifetime() -> None:
+    container = create_application_container()
+    application = create_app(container_factory=lambda: container)
+
+    with TestClient(application) as client:
+        first = client.app.state.container.document_indexing_service
+        second = client.app.state.container.document_indexing_service
+
+    assert first is second is container.document_indexing_service
+
+
+def _indexing_service(catalog_service: CatalogService) -> DocumentIndexingService:
+    return DocumentIndexingService(
+        catalog_service=catalog_service,
+        embedding_provider=None,
+        vector_index=InMemoryVectorIndex(),
+        lexical_index=InMemoryBM25Index(),
     )

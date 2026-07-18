@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from typing import Annotated
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 from pydantic import BaseModel, Field, field_validator
 
 from loreforge.application import ApplicationContainer
@@ -14,6 +14,13 @@ from loreforge.catalog import (
     CatalogService,
     CatalogServiceError,
     DocumentStatus,
+)
+from loreforge.documents.upload import MAX_UPLOAD_SIZE_BYTES, UnsupportedDocumentError
+from loreforge.indexing import (
+    DocumentAlreadyIndexedError,
+    DocumentIndexingExecutionError,
+    DocumentIndexingService,
+    IndexedDocumentResult,
 )
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -61,9 +68,23 @@ class DocumentListResponse(BaseModel):
     documents: tuple[DocumentResponse, ...]
 
 
+class IndexedDocumentResponse(BaseModel):
+    """Transport model for document indexing results."""
+
+    document_id: UUID
+    chunk_count: int
+    semantic_indexed_count: int
+    lexical_indexed_count: int
+
+
 def get_catalog_service(request: Request) -> CatalogService:
     """Return the catalog service owned by the current application."""
     return _application_container_from_request(request).catalog_service
+
+
+def get_document_indexing_service(request: Request) -> DocumentIndexingService:
+    """Return the document indexing service owned by the current application."""
+    return _application_container_from_request(request).document_indexing_service
 
 
 @router.get("/documents", response_model=DocumentListResponse)
@@ -111,6 +132,59 @@ def create_document(
     return _document_response(entry)
 
 
+@router.post(
+    "/documents/{document_id}/index",
+    response_model=IndexedDocumentResponse,
+)
+async def index_document(
+    document_id: UUID,
+    file: Annotated[UploadFile, File(description="PDF file to index")],
+    service: Annotated[
+        DocumentIndexingService,
+        Depends(get_document_indexing_service),
+    ],
+) -> IndexedDocumentResponse:
+    try:
+        content = await file.read(MAX_UPLOAD_SIZE_BYTES + 1)
+        result = service.index_pdf(
+            document_id=document_id,
+            filename=file.filename,
+            media_type=file.content_type,
+            content=content,
+        )
+    except UnsupportedDocumentError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="invalid PDF upload",
+        ) from exc
+    except DocumentAlreadyIndexedError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="document is already indexed",
+        ) from exc
+    except CatalogServiceError as exc:
+        if "does not exist" in str(exc):
+            raise _not_found() from exc
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="document lifecycle does not allow indexing",
+        ) from exc
+    except DocumentIndexingExecutionError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="document indexing is temporarily unavailable",
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="invalid PDF upload",
+        ) from exc
+    finally:
+        await file.close()
+
+    return _indexed_document_response(result)
+
+
 @router.post("/documents/{document_id}/ingesting", response_model=DocumentResponse)
 def mark_document_ingesting(
     document_id: UUID,
@@ -148,6 +222,17 @@ def mark_document_deleted(
     service: Annotated[CatalogService, Depends(get_catalog_service)],
 ) -> DocumentResponse:
     return _transition_document(lambda: service.mark_deleted(document_id))
+
+
+def _indexed_document_response(
+    result: IndexedDocumentResult,
+) -> IndexedDocumentResponse:
+    return IndexedDocumentResponse(
+        document_id=result.document_id,
+        chunk_count=result.chunk_count,
+        semantic_indexed_count=result.semantic_indexed_count,
+        lexical_indexed_count=result.lexical_indexed_count,
+    )
 
 
 def _document_response(entry: CatalogEntry) -> DocumentResponse:
