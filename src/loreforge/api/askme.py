@@ -3,9 +3,10 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, field_validator
 
+from loreforge.application import ApplicationContainer
 from loreforge.askme import (
     AskMeGroundingError,
     AskMeRequest,
@@ -13,12 +14,12 @@ from loreforge.askme import (
     AskMeService,
     AskMeUnavailableError,
 )
-from loreforge.generation.validation_models import ValidatedGroundedAnswer
 
 router = APIRouter(tags=["askme"])
 
 _UNAVAILABLE_DETAIL = "AskMe is temporarily unavailable."
 _GROUNDING_DETAIL = "AskMe could not produce a safely grounded answer."
+_APPLICATION_UNAVAILABLE_DETAIL = "Application services are unavailable."
 
 
 class AskRequest(BaseModel):
@@ -54,14 +55,9 @@ class AskResponse(BaseModel):
     citations: list[CitationResponse]
 
 
-class _UnavailableGroundedQueryEngine:
-    def answer(self, question: str) -> ValidatedGroundedAnswer:
-        raise AskMeUnavailableError(_UNAVAILABLE_DETAIL)
-
-
-def get_askme_service() -> AskMeService:
-    """Return the default unconfigured AskMe service."""
-    return AskMeService(query_engine=_UnavailableGroundedQueryEngine())
+def get_askme_service(request: Request) -> AskMeService:
+    """Return the AskMe service owned by the current application."""
+    return _application_container_from_request(request).askme_service
 
 
 @router.post("/ask", response_model=AskResponse)
@@ -101,3 +97,13 @@ def _ask_response(result: AskMeResult) -> AskResponse:
             for citation in result.citations
         ],
     )
+
+
+def _application_container_from_request(request: Request) -> ApplicationContainer:
+    container = getattr(request.app.state, "container", None)
+    if type(container) is not ApplicationContainer:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=_APPLICATION_UNAVAILABLE_DETAIL,
+        )
+    return container

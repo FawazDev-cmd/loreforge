@@ -44,7 +44,8 @@ class RaisingService:
 @pytest.fixture
 def client() -> Iterator[TestClient]:
     try:
-        yield TestClient(app)
+        with TestClient(app) as test_client:
+            yield test_client
     finally:
         app.dependency_overrides.clear()
 

@@ -5,20 +5,20 @@ from datetime import datetime, timezone
 from typing import Annotated
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field, field_validator
 
+from loreforge.application import ApplicationContainer
 from loreforge.catalog import (
     CatalogEntry,
     CatalogService,
     CatalogServiceError,
     DocumentStatus,
-    InMemoryCatalogRepository,
 )
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
-_catalog_service = CatalogService(InMemoryCatalogRepository())
+_APPLICATION_UNAVAILABLE_DETAIL = "Application services are unavailable."
 
 
 class CreateDocumentRequest(BaseModel):
@@ -61,9 +61,9 @@ class DocumentListResponse(BaseModel):
     documents: tuple[DocumentResponse, ...]
 
 
-def get_catalog_service() -> CatalogService:
-    """Return the process-local catalog service."""
-    return _catalog_service
+def get_catalog_service(request: Request) -> CatalogService:
+    """Return the catalog service owned by the current application."""
+    return _application_container_from_request(request).catalog_service
 
 
 @router.get("/documents", response_model=DocumentListResponse)
@@ -185,6 +185,16 @@ def _not_found() -> HTTPException:
         status_code=status.HTTP_404_NOT_FOUND,
         detail="document not found",
     )
+
+
+def _application_container_from_request(request: Request) -> ApplicationContainer:
+    container = getattr(request.app.state, "container", None)
+    if type(container) is not ApplicationContainer:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=_APPLICATION_UNAVAILABLE_DETAIL,
+        )
+    return container
 
 
 def _new_document_id() -> UUID:
