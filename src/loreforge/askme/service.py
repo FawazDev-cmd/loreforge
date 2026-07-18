@@ -12,6 +12,11 @@ from loreforge.askme.errors import (
 from loreforge.askme.models import AskMeCitation, AskMeRequest, AskMeResult
 from loreforge.generation.answer_models import SourceReference
 from loreforge.generation.validation_models import ValidatedGroundedAnswer
+from loreforge.query import (
+    NoRelevantEvidenceError,
+    QueryCompositionError,
+    QueryExecutionError,
+)
 
 _GENERIC_GROUNDING_ERROR = "AskMe could not produce a safely grounded answer."
 _GENERIC_UNAVAILABLE_ERROR = "AskMe is temporarily unavailable."
@@ -44,6 +49,12 @@ class AskMeService:
             validated_answer = self._query_engine.answer(request.question)
         except AskMeError:
             raise
+        except NoRelevantEvidenceError as exc:
+            raise AskMeGroundingError(_GENERIC_GROUNDING_ERROR) from exc
+        except QueryExecutionError as exc:
+            raise AskMeUnavailableError(_GENERIC_UNAVAILABLE_ERROR) from exc
+        except QueryCompositionError as exc:
+            raise AskMeGroundingError(_GENERIC_GROUNDING_ERROR) from exc
         except Exception as exc:
             raise AskMeUnavailableError(_GENERIC_UNAVAILABLE_ERROR) from exc
 

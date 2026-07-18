@@ -15,6 +15,7 @@ from loreforge.generation.validation_models import (
     CitationValidationResult,
     ValidatedGroundedAnswer,
 )
+from loreforge.query import NoRelevantEvidenceError, QueryExecutionError
 
 REQUEST_ID = UUID("00000000-0000-0000-0000-000000000001")
 REQUEST_ID_2 = UUID("00000000-0000-0000-0000-000000000002")
@@ -216,6 +217,37 @@ def test_invalid_request_id_factory_result_rejected() -> None:
 
     with pytest.raises(AskMeGroundingError):
         service.ask(AskMeRequest(QUESTION))
+
+
+def test_no_relevant_evidence_error_maps_to_grounding_error() -> None:
+    service = AskMeService(
+        query_engine=RaisingEngine(NoRelevantEvidenceError("raw evidence detail"))
+    )
+    factory = CountingFactory()
+    service = AskMeService(
+        query_engine=RaisingEngine(NoRelevantEvidenceError("raw evidence detail")),
+        request_id_factory=factory,
+    )
+
+    with pytest.raises(AskMeGroundingError) as exc_info:
+        service.ask(AskMeRequest(QUESTION))
+
+    assert "raw evidence detail" not in str(exc_info.value)
+    assert factory.calls == 0
+
+
+def test_query_execution_error_maps_to_unavailable_error() -> None:
+    factory = CountingFactory()
+    service = AskMeService(
+        query_engine=RaisingEngine(QueryExecutionError("raw provider detail")),
+        request_id_factory=factory,
+    )
+
+    with pytest.raises(AskMeUnavailableError) as exc_info:
+        service.ask(AskMeRequest(QUESTION))
+
+    assert "raw provider detail" not in str(exc_info.value)
+    assert factory.calls == 0
 
 
 def test_existing_unavailable_error_propagated_unchanged() -> None:
