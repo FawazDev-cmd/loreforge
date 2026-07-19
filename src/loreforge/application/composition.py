@@ -5,17 +5,47 @@ from dataclasses import dataclass
 
 from loreforge.application.container import ApplicationContainer
 from loreforge.askme import AskMeService, AskMeUnavailableError
-from loreforge.catalog import CatalogService, InMemoryCatalogRepository
+from loreforge.auth import (
+    ApiKeyAuthenticator,
+    Authenticator,
+    DisabledAuthenticator,
+    InMemoryApiKeyRepository,
+    InMemoryUserRepository,
+    UserIdentity,
+    UserRepository,
+    hash_api_key,
+)
+from loreforge.catalog import (
+    CatalogRepository,
+    CatalogService,
+    InMemoryCatalogRepository,
+)
+from loreforge.database import (
+    DatabaseRuntime,
+    SqlAlchemyCatalogRepository,
+    SqlAlchemyChunkRepository,
+    SqlAlchemyEmbeddingRepository,
+    SqlAlchemyIndexingStateRepository,
+    SqlAlchemyUserRepository,
+    create_database_runtime,
+)
 from loreforge.documents.ingestion import ingest_pdf
 from loreforge.embeddings.provider import EmbeddingProvider, QueryEmbeddingProvider
 from loreforge.generation.provider import LLMProvider
 from loreforge.generation.validation_models import ValidatedGroundedAnswer
-from loreforge.indexing import DocumentIndexingService, PdfIngestor
+from loreforge.indexing import (
+    DocumentIndexingService,
+    IndexingStateRepository,
+    InMemoryIndexingStateRepository,
+    PdfIngestor,
+)
 from loreforge.observability import InMemoryMetricsRecorder
 from loreforge.query import ProductionGroundedQueryEngine
 from loreforge.reranking import RerankerProvider
 from loreforge.retrieval.bm25 import InMemoryBM25Index
+from loreforge.retrieval.repository import ChunkRepository, EmbeddingRepository
 from loreforge.settings import (
+    AuthProvider,
     LoreForgeSettings,
     ProviderSelection,
     SettingsError,
@@ -58,8 +88,15 @@ def create_application_container(
     settings: LoreForgeSettings | None = None,
 ) -> ApplicationContainer:
     """Create one isolated set of application services."""
-    runtime_settings = load_settings() if settings is None else settings
-    catalog_service = CatalogService(InMemoryCatalogRepository())
+    runtime_settings = load_settings(env_file=None) if settings is None else settings
+    database = create_database_runtime(runtime_settings.database)
+    catalog_repository = _create_catalog_repository(database)
+    indexing_state_repository = _create_indexing_state_repository(database)
+    chunk_repository = _create_chunk_repository(database)
+    embedding_repository = _create_embedding_repository(database)
+    user_repository = _create_user_repository(database)
+    authenticator = _create_authenticator(runtime_settings, user_repository)
+    catalog_service = CatalogService(catalog_repository)
     vector_index = InMemoryVectorIndex()
     lexical_index = InMemoryBM25Index()
     metrics_recorder = InMemoryMetricsRecorder()
@@ -67,6 +104,9 @@ def create_application_container(
         catalog_service=catalog_service,
         vector_index=vector_index,
         lexical_index=lexical_index,
+        indexing_state_repository=indexing_state_repository,
+        chunk_repository=chunk_repository,
+        embedding_repository=embedding_repository,
         factories=factories,
         settings=runtime_settings,
     )
@@ -89,8 +129,72 @@ def create_application_container(
         lexical_index=lexical_index,
         query_engine=query_engine,
         metrics_recorder=metrics_recorder,
+        authenticator=authenticator,
+        user_repository=user_repository,
         settings=runtime_settings,
+        database=database,
     )
+
+
+def _create_user_repository(
+    database: DatabaseRuntime | None,
+) -> UserRepository:
+    if database is None:
+        return InMemoryUserRepository()
+    return SqlAlchemyUserRepository(database.session_factory)
+
+
+def _create_authenticator(
+    settings: LoreForgeSettings,
+    user_repository: UserRepository,
+) -> Authenticator:
+    if settings.auth.provider is AuthProvider.DISABLED:
+        return DisabledAuthenticator()
+    if settings.auth.provider is not AuthProvider.API_KEY:
+        return DisabledAuthenticator()
+
+    credentials = []
+    for configured in settings.auth.api_keys:
+        user = UserIdentity(
+            user_id=configured.user_id,
+            display_name=configured.display_name,
+        )
+        if user_repository.get(user.user_id) is None:
+            user_repository.add(user)
+        credentials.append((hash_api_key(configured.api_key), user))
+    return ApiKeyAuthenticator(InMemoryApiKeyRepository(tuple(credentials)))
+
+
+def _create_catalog_repository(
+    database: DatabaseRuntime | None,
+) -> CatalogRepository:
+    if database is None:
+        return InMemoryCatalogRepository()
+    return SqlAlchemyCatalogRepository(database.session_factory)
+
+
+def _create_indexing_state_repository(
+    database: DatabaseRuntime | None,
+) -> IndexingStateRepository:
+    if database is None:
+        return InMemoryIndexingStateRepository()
+    return SqlAlchemyIndexingStateRepository(database.session_factory)
+
+
+def _create_chunk_repository(
+    database: DatabaseRuntime | None,
+) -> ChunkRepository | None:
+    if database is None:
+        return None
+    return SqlAlchemyChunkRepository(database.session_factory)
+
+
+def _create_embedding_repository(
+    database: DatabaseRuntime | None,
+) -> EmbeddingRepository | None:
+    if database is None:
+        return None
+    return SqlAlchemyEmbeddingRepository(database.session_factory)
 
 
 def _create_askme_service(
@@ -118,6 +222,9 @@ def _create_document_indexing_service(
     catalog_service: CatalogService,
     vector_index: InMemoryVectorIndex,
     lexical_index: InMemoryBM25Index,
+    indexing_state_repository: IndexingStateRepository,
+    chunk_repository: ChunkRepository | None,
+    embedding_repository: EmbeddingRepository | None,
     factories: CompositionFactories | None,
     settings: LoreForgeSettings,
 ) -> DocumentIndexingService:
@@ -146,6 +253,9 @@ def _create_document_indexing_service(
         embedding_provider=embedding_provider,
         vector_index=vector_index,
         lexical_index=lexical_index,
+        indexing_state_repository=indexing_state_repository,
+        chunk_repository=chunk_repository,
+        embedding_repository=embedding_repository,
     )
 
 

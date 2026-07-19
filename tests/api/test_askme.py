@@ -4,7 +4,7 @@ from uuid import UUID
 import pytest
 from fastapi.testclient import TestClient
 
-from loreforge.api import askme
+from loreforge.api import admin, askme
 from loreforge.askme import (
     AskMeCitation,
     AskMeGroundingError,
@@ -12,6 +12,7 @@ from loreforge.askme import (
     AskMeResult,
     AskMeUnavailableError,
 )
+from loreforge.catalog import CatalogService, InMemoryCatalogRepository
 from loreforge.main import app
 
 REQUEST_ID = UUID("00000000-0000-0000-0000-000000000001")
@@ -43,6 +44,8 @@ class RaisingService:
 
 @pytest.fixture
 def client() -> Iterator[TestClient]:
+    service = CatalogService(InMemoryCatalogRepository())
+    app.dependency_overrides[admin.get_catalog_service] = lambda: service
     try:
         with TestClient(app) as test_client:
             yield test_client

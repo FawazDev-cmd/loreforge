@@ -6,6 +6,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, field_validator
 
+from loreforge.api.auth import get_current_principal
 from loreforge.application import ApplicationContainer
 from loreforge.askme import (
     AskMeGroundingError,
@@ -14,6 +15,7 @@ from loreforge.askme import (
     AskMeService,
     AskMeUnavailableError,
 )
+from loreforge.auth import AuthenticatedPrincipal
 
 router = APIRouter(tags=["askme"])
 
@@ -64,6 +66,10 @@ def get_askme_service(request: Request) -> AskMeService:
 def ask(
     request: AskRequest,
     service: Annotated[AskMeService, Depends(get_askme_service)],
+    _principal: Annotated[
+        AuthenticatedPrincipal | None,
+        Depends(get_current_principal),
+    ],
 ) -> AskResponse:
     try:
         result = service.ask(AskMeRequest(question=request.question))

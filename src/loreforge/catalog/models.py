@@ -26,6 +26,7 @@ class CatalogEntry:
     page_count: int
     chunk_count: int
     status: DocumentStatus
+    owner_user_id: UUID | None = None
 
     def __post_init__(self) -> None:
         if not self.filename.strip():
@@ -41,6 +42,9 @@ class CatalogEntry:
         _validate_nonnegative_int(self.chunk_count, "chunk_count")
         if type(self.status) is not DocumentStatus:
             msg = "status must be a DocumentStatus"
+            raise ValueError(msg)
+        if self.owner_user_id is not None and type(self.owner_user_id) is not UUID:
+            msg = "owner_user_id must be a UUID"
             raise ValueError(msg)
 
 

@@ -1,5 +1,7 @@
 # Production Gap Audit
 
+Day 34 status note: this audit was written before the PostgreSQL persistence milestone. Catalog and indexing-attempt metadata now have SQLAlchemy/PostgreSQL adapters and Alembic migrations; semantic vector retrieval, BM25 retrieval, original document storage, metrics, and query observations remain non-durable.
+
 Day 31 audit date: 2026-07-18
 
 This audit documents the inspected repository state for LoreForge after the deterministic backend foundation and before the production-backend phase. It is not an implementation plan disguised as completed work. LoreForge is not production-complete today.

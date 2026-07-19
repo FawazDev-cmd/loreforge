@@ -3,7 +3,14 @@
 from dataclasses import dataclass, field
 
 from loreforge.askme import AskMeService
+from loreforge.auth import (
+    Authenticator,
+    DisabledAuthenticator,
+    InMemoryUserRepository,
+    UserRepository,
+)
 from loreforge.catalog import CatalogService
+from loreforge.database import DatabaseRuntime
 from loreforge.indexing import DocumentIndexingService
 from loreforge.observability import InMemoryMetricsRecorder
 from loreforge.query import ProductionGroundedQueryEngine
@@ -23,7 +30,10 @@ class ApplicationContainer:
     lexical_index: InMemoryBM25Index
     query_engine: ProductionGroundedQueryEngine | None
     metrics_recorder: InMemoryMetricsRecorder
+    authenticator: Authenticator = field(default_factory=DisabledAuthenticator)
+    user_repository: UserRepository = field(default_factory=InMemoryUserRepository)
     settings: LoreForgeSettings = field(default_factory=LoreForgeSettings)
+    database: DatabaseRuntime | None = None
 
     def __post_init__(self) -> None:
         if type(self.catalog_service) is not CatalogService:
@@ -51,5 +61,13 @@ class ApplicationContainer:
             msg = "metrics_recorder must be an InMemoryMetricsRecorder"
             raise TypeError(msg)
         if type(self.settings) is not LoreForgeSettings:
-            msg = "settings must be a LoreForgeSettings"
+            msg = "settings must be LoreForgeSettings"
             raise TypeError(msg)
+        if self.database is not None and type(self.database) is not DatabaseRuntime:
+            msg = "database must be a DatabaseRuntime or None"
+            raise TypeError(msg)
+
+    def close(self) -> None:
+        """Release owned runtime resources."""
+        if self.database is not None:
+            self.database.close()

@@ -1,4 +1,4 @@
-﻿# LoreForge
+# LoreForge
 
 LoreForge is a Python 3.13, FastAPI-based backend for a production-minded retrieval-augmented assistant named AskMe. It is a public portfolio project focused on enterprise RAG engineering: ingestion, retrieval, grounded generation, citation enforcement, evaluation, observability, testing, and reproducible local development.
 
@@ -26,6 +26,7 @@ Implemented and verified:
 - validated grounded-answer models
 - AskMe service and API route
 - admin catalog API
+- PostgreSQL/Alembic persistence foundation for document and indexing metadata
 - document indexing API that populates shared semantic and lexical indexes
 - deterministic runtime observability for configured AskMe queries
 - deterministic evaluation primitives
@@ -33,9 +34,9 @@ Implemented and verified:
 
 Not enabled by default:
 
-- live LLM calls
-- centralized typed settings and startup validation
-- persistence across process restarts
+- live provider/model calls during default startup
+- automatic database migrations unless explicitly enabled
+- durable vector/BM25 indexes, uploaded PDF bytes, metrics, or query observations
 - authentication or authorization
 - Docker or CI execution files
 - frontend UI
@@ -47,7 +48,8 @@ src/loreforge/
   api/              FastAPI transport routes
   application/      application container and composition root
   askme/            framework-independent AskMe service contract
-  catalog/          in-memory document lifecycle catalog
+  catalog/          document lifecycle models, service, and repository protocol
+  database/         SQLAlchemy metadata repositories, engine lifecycle, health checks
   documents/        upload validation, parsing, normalization, chunking, ingestion
   embeddings/       embedding models, provider protocol, local provider, pipeline
   evaluation/       deterministic offline/runtime-compatible evaluation helpers
@@ -59,6 +61,7 @@ src/loreforge/
   retrieval/        semantic, BM25, hybrid/RRF retrieval models and logic
   vector_index/     in-memory vector indexing and similarity
 
+migrations/         Alembic migrations for durable metadata tables
 tests/              offline unit, service, API, and integration tests
 docs/               focused design and workflow documentation
 .ai/                ignored project context and milestone state
@@ -70,12 +73,14 @@ LoreForge keeps business logic framework-independent where practical. FastAPI ro
 
 Default startup creates:
 
-- `CatalogService` backed by `InMemoryCatalogRepository`
+- `CatalogService` backed by `InMemoryCatalogRepository` when no database URL is configured
 - shared `InMemoryVectorIndex`
 - shared `InMemoryBM25Index`
 - `DocumentIndexingService`
 - shared `InMemoryMetricsRecorder`
 - degraded `AskMeService` unless all query providers are supplied through `CompositionFactories`
+
+Configured startup can use `LOREFORGE_DATABASE_URL` to back catalog and indexing-attempt metadata with PostgreSQL through SQLAlchemy repositories. Semantic vector search and BM25 lexical search intentionally remain in memory until Day 35.
 
 Configured startup can inject:
 
@@ -155,10 +160,25 @@ Key configuration groups documented in `.env.example`:
 - API host, port, and future CORS origins
 - logging controls
 - provider selections and provider-specific placeholders
-- PostgreSQL URL, pool sizing, and migration placeholders
+- PostgreSQL URL, pool sizing, migration controls, and opt-in live database smoke flag
 - local/Supabase storage placeholders
 - Supabase Auth/JWT placeholders
 - observability toggles
+
+## PostgreSQL and Migrations
+
+Leave `LOREFORGE_DATABASE_URL` empty for the default zero-cost in-memory runtime. When a PostgreSQL URL is configured, the application composition root uses SQLAlchemy repositories for catalog entries and indexing-attempt metadata.
+
+Apply migrations before using a fresh database:
+
+```bash
+uv run --locked alembic -c alembic.ini upgrade head
+```
+
+Set `LOREFORGE_DATABASE_MIGRATIONS_ENABLED=true` only when you intentionally want application startup to run Alembic migrations. Supabase is treated as a PostgreSQL host; LoreForge does not depend on Supabase-specific APIs for Day 34 persistence.
+
+Database health can be checked through the `DatabaseRuntime.check_health()` helper or the opt-in live smoke test. The public `/health` endpoint remains a static application liveness check and does not expose database details. See `docs/postgresql-persistence.md` for the Day 34 persistence boundary and current limitations.
+
 ## API Overview
 
 ### Health
@@ -290,7 +310,7 @@ A configured runtime can prove the backend vertical slice through these steps:
 3. The indexing service validates the PDF, parses pages, normalizes text, chunks content, embeds chunks, writes to the shared vector index, writes to the shared BM25 index, and marks the document `READY`.
 4. If indexing fails after ingestion begins, semantic and lexical index writes are rolled back and the catalog entry is marked `FAILED`.
 
-All indexing state is in memory today.
+When `LOREFORGE_DATABASE_URL` is unset, catalog and indexing-attempt metadata remain in memory. When it is set and migrations have been applied, catalog metadata and indexing-attempt STARTED/SUCCEEDED/FAILED state are stored in PostgreSQL. The semantic vector and BM25 indexes remain in memory until Day 35.
 
 ## AskMe Workflow
 
@@ -319,7 +339,19 @@ Run all tests:
 uv run --locked pytest
 ```
 
-The default test suite is offline and deterministic. Provider and integration boundaries use fakes or injected clients/transports; tests must not require live model downloads, Gemini, OpenRouter, network access, sleeps, or randomness.`r`n`r`nAn opt-in Gemini smoke test exists at `tests/integration/test_gemini_live_smoke.py`. Run it only when you intentionally want a live provider check and have configured a local ignored `.env` with Gemini settings:`r`n`r`n```bash`r`nLOREFORGE_RUN_LIVE_GEMINI_SMOKE=true uv run --locked pytest tests/integration/test_gemini_live_smoke.py`r`n```
+The default test suite is offline and deterministic. Provider and integration boundaries use fakes or injected clients/transports; tests must not require live model downloads, Gemini, OpenRouter, PostgreSQL, network access, sleeps, or randomness.
+
+An opt-in Gemini smoke test exists at `tests/integration/test_gemini_live_smoke.py`. Run it only when you intentionally want a live provider check and have configured a local ignored `.env` with Gemini settings:
+
+```bash
+LOREFORGE_RUN_LIVE_GEMINI_SMOKE=true uv run --locked pytest tests/integration/test_gemini_live_smoke.py
+```
+
+An opt-in PostgreSQL/Supabase smoke test exists at `tests/integration/test_database_live_smoke.py`. Run it only when you intentionally want a live database check and have configured a local ignored `.env` with `LOREFORGE_DATABASE_URL`:
+
+```bash
+LOREFORGE_RUN_LIVE_DATABASE_SMOKE=true uv run --locked pytest tests/integration/test_database_live_smoke.py
+```
 
 ## Linting and Type Checking
 
@@ -367,7 +399,7 @@ Before deploying beyond local development, add and verify:
 - live provider operational validation with approved credentials
 - secret management outside source control
 - production process management
-- persistence for catalog/index state if restart durability is required
+- configured PostgreSQL for restart-safe document and indexing metadata
 - authentication and authorization for admin/document endpoints
 - Docker or equivalent reproducible runtime packaging
 - CI verification gates
@@ -375,11 +407,11 @@ Before deploying beyond local development, add and verify:
 
 ## Known Limitations
 
-- Runtime catalog, vector index, BM25 index, and metrics recorder are in memory only.
+- Catalog and indexing-attempt metadata are durable only when PostgreSQL is configured and migrations have been applied; otherwise they remain in memory.
 - Default `/ask` is intentionally unavailable without injected providers.
 - Local embedding/reranking providers may download or load model artifacts when used outside the default app.
 - Gemini and OpenRouter exist as adapters but are disabled by default and require explicit credentials/configuration.
 - No authentication or authorization is implemented.
-- No persistent document storage is implemented.
+- Vector index, BM25 index, original PDF bytes, metrics, and query observations remain in memory or request-scoped only.
 - No Docker or CI files are present.
 - Evaluation primitives are deterministic, but benchmark retrieval quality still requires ground-truth evaluation cases.

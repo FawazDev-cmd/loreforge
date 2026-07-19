@@ -3,9 +3,11 @@
 from typing import Annotated
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from pydantic import BaseModel
 
+from loreforge.api.auth import get_current_principal
+from loreforge.auth import AuthenticatedPrincipal
 from loreforge.documents import DocumentSource
 from loreforge.documents.upload import (
     MAX_UPLOAD_SIZE_BYTES,
@@ -31,6 +33,10 @@ class DocumentUploadResponse(BaseModel):
 )
 async def upload_document(
     file: Annotated[UploadFile, File(description="PDF file to accept")],
+    _principal: Annotated[
+        AuthenticatedPrincipal | None,
+        Depends(get_current_principal),
+    ],
 ) -> DocumentUploadResponse:
     try:
         content = await file.read(MAX_UPLOAD_SIZE_BYTES + 1)

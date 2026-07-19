@@ -16,10 +16,13 @@ from loreforge.embeddings.models import (
     EmbeddingResult,
     EmbeddingVector,
 )
+from loreforge.embeddings.pipeline import EmbeddedChunk
 from loreforge.indexing import (
     DocumentAlreadyIndexedError,
     DocumentIndexingExecutionError,
     DocumentIndexingService,
+    IndexingStatus,
+    InMemoryIndexingStateRepository,
 )
 from loreforge.retrieval.bm25 import BM25IndexError, InMemoryBM25Index
 from loreforge.vector_index import InMemoryVectorIndex, VectorIndexError
@@ -556,6 +559,9 @@ def _harness(
     embedding_provider: FakeEmbeddingProvider | None | object = _DEFAULT_PROVIDER,
     vector_index: InMemoryVectorIndex | None = None,
     lexical_index: InMemoryBM25Index | None = None,
+    indexing_state_repository: InMemoryIndexingStateRepository | None = None,
+    chunk_repository: object | None = None,
+    embedding_repository: object | None = None,
 ) -> Harness:
     catalog = CatalogService(InMemoryCatalogRepository())
     if register:
@@ -579,6 +585,9 @@ def _harness(
         embedding_provider=fake_provider,
         vector_index=semantic_index,
         lexical_index=bm25_index,
+        indexing_state_repository=indexing_state_repository,
+        chunk_repository=chunk_repository,
+        embedding_repository=embedding_repository,
     )
     return Harness(
         catalog=catalog,
@@ -619,3 +628,149 @@ def _embedded(chunk: DocumentChunk, vector: EmbeddingVector):
     from loreforge.embeddings.pipeline import EmbeddedChunk
 
     return EmbeddedChunk(chunk=chunk, vector=vector)
+
+
+def test_successful_indexing_records_indexing_state_metadata() -> None:
+    indexing_states = InMemoryIndexingStateRepository()
+    state_id = UUID("00000000-0000-0000-0000-000000000301")
+    harness = _harness(indexing_state_repository=indexing_states)
+    harness.service._indexing_state_id_factory = lambda: state_id
+    harness.service._clock = lambda: UPLOADED_AT
+
+    harness.service.index_pdf(
+        document_id=DOC,
+        filename="policy.pdf",
+        media_type="application/pdf",
+        content=PDF_BYTES,
+    )
+
+    [state] = indexing_states.list_for_document(DOC)
+    assert state.state_id == state_id
+    assert state.status is IndexingStatus.SUCCEEDED
+    assert state.page_count == 1
+    assert state.chunk_count == 2
+    assert state.completed_at == UPLOADED_AT
+    assert state.error_message is None
+
+
+def test_failed_indexing_records_safe_failed_indexing_state() -> None:
+    indexing_states = InMemoryIndexingStateRepository()
+    state_id = UUID("00000000-0000-0000-0000-000000000302")
+    harness = _harness(
+        embedding_provider=FakeEmbeddingProvider(error=RuntimeError("raw provider")),
+        indexing_state_repository=indexing_states,
+    )
+    harness.service._indexing_state_id_factory = lambda: state_id
+    harness.service._clock = lambda: UPLOADED_AT
+
+    with pytest.raises(DocumentIndexingExecutionError):
+        harness.service.index_pdf(
+            document_id=DOC,
+            filename="policy.pdf",
+            media_type="application/pdf",
+            content=PDF_BYTES,
+        )
+
+    [state] = indexing_states.list_for_document(DOC)
+    assert state.status is IndexingStatus.FAILED
+    assert state.completed_at == UPLOADED_AT
+    assert state.error_message == "document indexing failed"
+    assert "raw provider" not in state.error_message
+
+
+class RecordingChunkRepository:
+    def __init__(self) -> None:
+        self.chunks: dict[UUID, DocumentChunk] = {}
+        self.removed: list[UUID] = []
+
+    def add(self, chunks: tuple[DocumentChunk, ...]) -> None:
+        for chunk in chunks:
+            self.chunks[chunk.chunk_id] = chunk
+
+    def get(self, chunk_id: UUID) -> DocumentChunk | None:
+        return self.chunks.get(chunk_id)
+
+    def list(self) -> tuple[DocumentChunk, ...]:
+        return tuple(self.chunks.values())
+
+    def list_for_document(self, document_id: UUID) -> tuple[DocumentChunk, ...]:
+        return tuple(
+            chunk for chunk in self.chunks.values() if chunk.document_id == document_id
+        )
+
+    def remove(self, chunk_id: UUID) -> bool:
+        self.removed.append(chunk_id)
+        return self.chunks.pop(chunk_id, None) is not None
+
+
+class RecordingEmbeddingRepository:
+    def __init__(self) -> None:
+        self.embedded_chunks: dict[UUID, EmbeddedChunk] = {}
+        self.removed: list[UUID] = []
+
+    def add(self, embedded_chunks: tuple[EmbeddedChunk, ...]) -> None:
+        for embedded_chunk in embedded_chunks:
+            self.embedded_chunks[embedded_chunk.chunk.chunk_id] = embedded_chunk
+
+    def get(self, chunk_id: UUID) -> EmbeddedChunk | None:
+        return self.embedded_chunks.get(chunk_id)
+
+    def list(self) -> tuple[EmbeddedChunk, ...]:
+        return tuple(self.embedded_chunks.values())
+
+    def list_for_document(self, document_id: UUID) -> tuple[EmbeddedChunk, ...]:
+        return tuple(
+            item
+            for item in self.embedded_chunks.values()
+            if item.chunk.document_id == document_id
+        )
+
+    def remove(self, chunk_id: UUID) -> bool:
+        self.removed.append(chunk_id)
+        return self.embedded_chunks.pop(chunk_id, None) is not None
+
+
+def test_successful_indexing_persists_chunks_and_embeddings() -> None:
+    chunk_repository = RecordingChunkRepository()
+    embedding_repository = RecordingEmbeddingRepository()
+    harness = _harness(
+        chunk_repository=chunk_repository,
+        embedding_repository=embedding_repository,
+    )
+
+    harness.service.index_pdf(
+        document_id=DOC,
+        filename="policy.pdf",
+        media_type="application/pdf",
+        content=PDF_BYTES,
+    )
+
+    assert tuple(chunk_repository.chunks) == (CHUNK1, CHUNK2)
+    assert tuple(embedding_repository.embedded_chunks) == (CHUNK1, CHUNK2)
+    assert (
+        embedding_repository.embedded_chunks[CHUNK1].chunk
+        == chunk_repository.chunks[CHUNK1]
+    )
+
+
+def test_failed_indexing_rolls_back_persisted_chunks_and_embeddings() -> None:
+    chunk_repository = RecordingChunkRepository()
+    embedding_repository = RecordingEmbeddingRepository()
+    harness = _harness(
+        lexical_index=FailingBM25Index(fail_add=True),
+        chunk_repository=chunk_repository,
+        embedding_repository=embedding_repository,
+    )
+
+    with pytest.raises(DocumentIndexingExecutionError):
+        harness.service.index_pdf(
+            document_id=DOC,
+            filename="policy.pdf",
+            media_type="application/pdf",
+            content=PDF_BYTES,
+        )
+
+    assert chunk_repository.chunks == {}
+    assert embedding_repository.embedded_chunks == {}
+    assert chunk_repository.removed == [CHUNK1, CHUNK2]
+    assert embedding_repository.removed == [CHUNK1, CHUNK2]

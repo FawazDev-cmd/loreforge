@@ -14,6 +14,7 @@ from loreforge.application import (
 )
 from loreforge.askme import AskMeRequest, AskMeService, AskMeUnavailableError
 from loreforge.catalog import CatalogService, InMemoryCatalogRepository
+from loreforge.database import DatabaseRuntime
 from loreforge.documents.models import DocumentChunk, DocumentSource
 from loreforge.embeddings import EmbeddingRequest, EmbeddingResult, EmbeddingVector
 from loreforge.embeddings.pipeline import EmbeddedChunk
@@ -636,3 +637,21 @@ def test_settings_driven_gemini_query_runtime_requires_reranker() -> None:
     assert container.query_engine is None
     with pytest.raises(AskMeUnavailableError):
         container.askme_service.ask(AskMeRequest(QUESTION))
+
+
+def test_database_settings_create_database_runtime_without_replacing_indexes() -> None:
+    settings = load_settings(
+        {
+            "LOREFORGE_DATABASE_URL": "postgresql://user:pass@localhost:5432/loreforge",
+        }
+    )
+
+    container = create_application_container(settings=settings)
+
+    try:
+        assert type(container.database) is DatabaseRuntime
+        assert type(container.vector_index) is InMemoryVectorIndex
+        assert type(container.lexical_index) is InMemoryBM25Index
+        assert container.query_engine is None
+    finally:
+        container.close()

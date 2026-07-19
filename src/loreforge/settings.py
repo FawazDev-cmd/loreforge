@@ -10,6 +10,7 @@ from math import isfinite
 from pathlib import Path
 from typing import TypeVar
 from urllib.parse import urlparse
+from uuid import UUID
 
 _SettingsEnum = TypeVar("_SettingsEnum", bound=StrEnum)
 
@@ -56,6 +57,7 @@ class AuthProvider(StrEnum):
     """Authentication provider selection modes."""
 
     DISABLED = "disabled"
+    API_KEY = "api_key"
     SUPABASE = "supabase"
 
 
@@ -250,7 +252,7 @@ class ProviderSettings:
 
 @dataclass(frozen=True, slots=True)
 class DatabaseSettings:
-    """Database settings prepared for future PostgreSQL persistence."""
+    """PostgreSQL metadata persistence settings."""
 
     url: str | None = None
     pool_min_size: int = 1
@@ -324,15 +326,42 @@ class StorageSettings:
 
 
 @dataclass(frozen=True, slots=True)
+class ApiKeyCredentialSetting:
+    """Configured development API key mapped to a stable user."""
+
+    user_id: UUID
+    api_key: str
+    display_name: str | None = None
+
+    def __post_init__(self) -> None:
+        if type(self.user_id) is not UUID:
+            msg = "LOREFORGE_AUTH_API_KEYS user ID must be a UUID"
+            raise SettingsError(msg)
+        _validate_optional_nonblank(
+            self.display_name,
+            "LOREFORGE_AUTH_API_KEYS display name",
+        )
+        _validate_optional_secret(self.api_key, "LOREFORGE_AUTH_API_KEYS API key")
+
+
+@dataclass(frozen=True, slots=True)
 class AuthSettings:
-    """Authentication settings prepared for future Supabase JWT validation."""
+    """Authentication settings for disabled, API-key, or future JWT auth."""
 
     provider: AuthProvider = AuthProvider.DISABLED
+    api_keys: tuple[ApiKeyCredentialSetting, ...] = ()
     jwt_issuer: str | None = None
     jwt_audience: str | None = None
     jwks_url: str | None = None
 
     def __post_init__(self) -> None:
+        if type(self.api_keys) is not tuple:
+            msg = "LOREFORGE_AUTH_API_KEYS must be parsed as a tuple"
+            raise SettingsError(msg)
+        for credential in self.api_keys:
+            if type(credential) is not ApiKeyCredentialSetting:
+                msg = "LOREFORGE_AUTH_API_KEYS entries must be API-key credentials"
+                raise SettingsError(msg)
         if self.jwt_issuer is not None:
             _require_https_url(self.jwt_issuer, "LOREFORGE_AUTH_JWT_ISSUER")
         _validate_optional_nonblank(
@@ -359,6 +388,9 @@ class AuthSettings:
                     "LOREFORGE_AUTH_JWKS_URL is required when Supabase auth is enabled"
                 )
                 raise SettingsError(msg)
+        if self.provider == AuthProvider.API_KEY and not self.api_keys:
+            msg = "LOREFORGE_AUTH_API_KEYS is required when API-key auth is enabled"
+            raise SettingsError(msg)
 
 
 @dataclass(frozen=True, slots=True)
@@ -538,6 +570,7 @@ def load_settings(
                 AuthProvider,
                 AuthProvider.DISABLED,
             ),
+            api_keys=_api_key_credentials(values, "LOREFORGE_AUTH_API_KEYS"),
             jwt_issuer=_optional_string(values, "LOREFORGE_AUTH_JWT_ISSUER"),
             jwt_audience=_optional_string(values, "LOREFORGE_AUTH_JWT_AUDIENCE"),
             jwks_url=_optional_string(values, "LOREFORGE_AUTH_JWKS_URL"),
@@ -661,6 +694,37 @@ def _csv(values: Mapping[str, str], name: str) -> tuple[str, ...]:
     return tuple(item.strip() for item in raw_value.split(",") if item.strip())
 
 
+def _api_key_credentials(
+    values: Mapping[str, str],
+    name: str,
+) -> tuple[ApiKeyCredentialSetting, ...]:
+    raw_value = values.get(name)
+    if raw_value is None or not raw_value.strip():
+        return ()
+
+    credentials: list[ApiKeyCredentialSetting] = []
+    for item in raw_value.split(","):
+        raw_parts = item.split(":", 2)
+        if len(raw_parts) < 2:
+            msg = f"{name} entries must use user_uuid:api_key[:display_name]"
+            raise SettingsError(msg)
+        raw_user_id, api_key = raw_parts[0].strip(), raw_parts[1].strip()
+        display_name = raw_parts[2].strip() if len(raw_parts) == 3 else None
+        try:
+            user_id = UUID(raw_user_id)
+        except ValueError as error:
+            msg = f"{name} user IDs must be valid UUID values"
+            raise SettingsError(msg) from error
+        credentials.append(
+            ApiKeyCredentialSetting(
+                user_id=user_id,
+                api_key=api_key,
+                display_name=display_name or None,
+            )
+        )
+    return tuple(credentials)
+
+
 def _enum(
     values: Mapping[str, str],
     name: str,
@@ -745,6 +809,7 @@ def _require_postgresql_url(value: str, name: str) -> None:
 
 __all__ = [
     "ApiSettings",
+    "ApiKeyCredentialSetting",
     "ApplicationSettings",
     "AuthProvider",
     "AuthSettings",

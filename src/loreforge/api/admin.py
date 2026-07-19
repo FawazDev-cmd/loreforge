@@ -8,7 +8,9 @@ from uuid import UUID, uuid4
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 from pydantic import BaseModel, Field, field_validator
 
+from loreforge.api.auth import get_current_principal
 from loreforge.application import ApplicationContainer
+from loreforge.auth import AuthenticatedPrincipal
 from loreforge.catalog import (
     CatalogEntry,
     CatalogService,
@@ -90,9 +92,18 @@ def get_document_indexing_service(request: Request) -> DocumentIndexingService:
 @router.get("/documents", response_model=DocumentListResponse)
 def list_documents(
     service: Annotated[CatalogService, Depends(get_catalog_service)],
+    principal: Annotated[
+        AuthenticatedPrincipal | None,
+        Depends(get_current_principal),
+    ],
 ) -> DocumentListResponse:
+    entries = (
+        service.list()
+        if principal is None
+        else service.list_for_owner(principal.user.user_id)
+    )
     return DocumentListResponse(
-        documents=tuple(_document_response(entry) for entry in service.list())
+        documents=tuple(_document_response(entry) for entry in entries)
     )
 
 
@@ -100,8 +111,16 @@ def list_documents(
 def get_document(
     document_id: UUID,
     service: Annotated[CatalogService, Depends(get_catalog_service)],
+    principal: Annotated[
+        AuthenticatedPrincipal | None,
+        Depends(get_current_principal),
+    ],
 ) -> DocumentResponse:
-    entry = service.get(document_id)
+    entry = (
+        service.get(document_id)
+        if principal is None
+        else service.get_for_owner(document_id, principal.user.user_id)
+    )
     if entry is None:
         raise _not_found()
     return _document_response(entry)
@@ -115,6 +134,10 @@ def get_document(
 def create_document(
     request: CreateDocumentRequest,
     service: Annotated[CatalogService, Depends(get_catalog_service)],
+    principal: Annotated[
+        AuthenticatedPrincipal | None,
+        Depends(get_current_principal),
+    ],
 ) -> DocumentResponse:
     try:
         entry = service.register_upload(
@@ -122,6 +145,7 @@ def create_document(
             filename=request.filename,
             uploaded_at=_utc_now(),
             page_count=request.page_count,
+            owner_user_id=(None if principal is None else principal.user.user_id),
         )
     except ValueError as exc:
         raise HTTPException(
@@ -143,15 +167,28 @@ async def index_document(
         DocumentIndexingService,
         Depends(get_document_indexing_service),
     ],
+    principal: Annotated[
+        AuthenticatedPrincipal | None,
+        Depends(get_current_principal),
+    ],
 ) -> IndexedDocumentResponse:
     try:
         content = await file.read(MAX_UPLOAD_SIZE_BYTES + 1)
-        result = service.index_pdf(
-            document_id=document_id,
-            filename=file.filename,
-            media_type=file.content_type,
-            content=content,
-        )
+        if principal is None:
+            result = service.index_pdf(
+                document_id=document_id,
+                filename=file.filename,
+                media_type=file.content_type,
+                content=content,
+            )
+        else:
+            result = service.index_pdf(
+                document_id=document_id,
+                filename=file.filename,
+                media_type=file.content_type,
+                content=content,
+                owner_user_id=principal.user.user_id,
+            )
     except UnsupportedDocumentError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -189,8 +226,19 @@ async def index_document(
 def mark_document_ingesting(
     document_id: UUID,
     service: Annotated[CatalogService, Depends(get_catalog_service)],
+    principal: Annotated[
+        AuthenticatedPrincipal | None,
+        Depends(get_current_principal),
+    ],
 ) -> DocumentResponse:
-    return _transition_document(lambda: service.mark_ingesting(document_id))
+    if principal is None:
+        return _transition_document(lambda: service.mark_ingesting(document_id))
+    return _transition_document(
+        lambda: service.mark_ingesting_for_owner(
+            document_id,
+            principal.user.user_id,
+        )
+    )
 
 
 @router.post("/documents/{document_id}/ready", response_model=DocumentResponse)
@@ -198,10 +246,23 @@ def mark_document_ready(
     document_id: UUID,
     request: DocumentCountsRequest,
     service: Annotated[CatalogService, Depends(get_catalog_service)],
+    principal: Annotated[
+        AuthenticatedPrincipal | None,
+        Depends(get_current_principal),
+    ],
 ) -> DocumentResponse:
+    if principal is None:
+        return _transition_document(
+            lambda: service.mark_ready(
+                document_id,
+                page_count=request.page_count,
+                chunk_count=request.chunk_count,
+            )
+        )
     return _transition_document(
-        lambda: service.mark_ready(
+        lambda: service.mark_ready_for_owner(
             document_id,
+            principal.user.user_id,
             page_count=request.page_count,
             chunk_count=request.chunk_count,
         )
@@ -212,16 +273,32 @@ def mark_document_ready(
 def mark_document_failed(
     document_id: UUID,
     service: Annotated[CatalogService, Depends(get_catalog_service)],
+    principal: Annotated[
+        AuthenticatedPrincipal | None,
+        Depends(get_current_principal),
+    ],
 ) -> DocumentResponse:
-    return _transition_document(lambda: service.mark_failed(document_id))
+    if principal is None:
+        return _transition_document(lambda: service.mark_failed(document_id))
+    return _transition_document(
+        lambda: service.mark_failed_for_owner(document_id, principal.user.user_id)
+    )
 
 
 @router.post("/documents/{document_id}/deleted", response_model=DocumentResponse)
 def mark_document_deleted(
     document_id: UUID,
     service: Annotated[CatalogService, Depends(get_catalog_service)],
+    principal: Annotated[
+        AuthenticatedPrincipal | None,
+        Depends(get_current_principal),
+    ],
 ) -> DocumentResponse:
-    return _transition_document(lambda: service.mark_deleted(document_id))
+    if principal is None:
+        return _transition_document(lambda: service.mark_deleted(document_id))
+    return _transition_document(
+        lambda: service.mark_deleted_for_owner(document_id, principal.user.user_id)
+    )
 
 
 def _indexed_document_response(

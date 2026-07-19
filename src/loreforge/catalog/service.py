@@ -37,6 +37,7 @@ class CatalogService:
         uploaded_at: datetime,
         page_count: int = 0,
         document_id: UUID | None = None,
+        owner_user_id: UUID | None = None,
     ) -> CatalogEntry:
         """Register newly uploaded document metadata."""
         entry = CatalogEntry(
@@ -46,6 +47,7 @@ class CatalogService:
             page_count=page_count,
             chunk_count=0,
             status=DocumentStatus.UPLOADED,
+            owner_user_id=owner_user_id,
         )
         self._repository.add(entry)
         return entry
@@ -53,6 +55,15 @@ class CatalogService:
     def mark_ingesting(self, document_id: UUID) -> CatalogEntry:
         """Mark an uploaded document as actively ingesting."""
         return self._transition(document_id, DocumentStatus.INGESTING)
+
+    def mark_ingesting_for_owner(
+        self,
+        document_id: UUID,
+        owner_user_id: UUID,
+    ) -> CatalogEntry:
+        """Mark an owned uploaded document as actively ingesting."""
+        self._require_owner(document_id, owner_user_id)
+        return self.mark_ingesting(document_id)
 
     def mark_ready(
         self,
@@ -77,17 +88,70 @@ class CatalogService:
         """Mark an uploaded or ingesting document as failed."""
         return self._transition(document_id, DocumentStatus.FAILED)
 
+    def mark_failed_for_owner(
+        self,
+        document_id: UUID,
+        owner_user_id: UUID,
+    ) -> CatalogEntry:
+        """Mark an owned uploaded or ingesting document as failed."""
+        self._require_owner(document_id, owner_user_id)
+        return self.mark_failed(document_id)
+
     def mark_deleted(self, document_id: UUID) -> CatalogEntry:
         """Mark a ready or failed document as deleted."""
         return self._transition(document_id, DocumentStatus.DELETED)
+
+    def mark_deleted_for_owner(
+        self,
+        document_id: UUID,
+        owner_user_id: UUID,
+    ) -> CatalogEntry:
+        """Mark an owned ready or failed document as deleted."""
+        self._require_owner(document_id, owner_user_id)
+        return self.mark_deleted(document_id)
 
     def get(self, document_id: UUID) -> CatalogEntry | None:
         """Return a catalog entry by document ID when present."""
         return self._repository.get(document_id)
 
+    def get_for_owner(
+        self,
+        document_id: UUID,
+        owner_user_id: UUID,
+    ) -> CatalogEntry | None:
+        """Return an owned catalog entry without revealing other owners."""
+        entry = self._repository.get(document_id)
+        if entry is None or entry.owner_user_id != owner_user_id:
+            return None
+        return entry
+
     def list(self) -> tuple[CatalogEntry, ...]:
         """Return catalog entries in repository order."""
         return self._repository.list()
+
+    def list_for_owner(self, owner_user_id: UUID) -> tuple[CatalogEntry, ...]:
+        """Return catalog entries owned by one user in repository order."""
+        return tuple(
+            entry
+            for entry in self._repository.list()
+            if entry.owner_user_id == owner_user_id
+        )
+
+    def mark_ready_for_owner(
+        self,
+        document_id: UUID,
+        owner_user_id: UUID,
+        *,
+        page_count: int,
+        chunk_count: int,
+    ) -> CatalogEntry:
+        """Mark an owned ingesting document as ready with final counts."""
+        self._require_owner(document_id, owner_user_id)
+        return self.mark_ready(
+            document_id,
+            page_count=page_count,
+            chunk_count=chunk_count,
+        )
 
     def _transition(
         self,
@@ -103,6 +167,17 @@ class CatalogService:
     def _require_entry(self, document_id: UUID) -> CatalogEntry:
         entry = self._repository.get(document_id)
         if entry is None:
+            msg = "document_id does not exist in catalog"
+            raise CatalogServiceError(msg)
+        return entry
+
+    def _require_owner(
+        self,
+        document_id: UUID,
+        owner_user_id: UUID,
+    ) -> CatalogEntry:
+        entry = self._require_entry(document_id)
+        if entry.owner_user_id != owner_user_id:
             msg = "document_id does not exist in catalog"
             raise CatalogServiceError(msg)
         return entry
