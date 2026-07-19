@@ -30,6 +30,7 @@ from loreforge.observability import InMemoryMetricsRecorder
 from loreforge.query import ProductionGroundedQueryEngine
 from loreforge.reranking import RerankingRequest, RerankingScore
 from loreforge.retrieval.bm25 import InMemoryBM25Index
+from loreforge.settings import load_settings
 from loreforge.vector_index import InMemoryVectorIndex
 
 REQUEST_ID = UUID("00000000-0000-0000-0000-000000000001")
@@ -244,13 +245,11 @@ def test_application_composition_does_not_import_provider_or_model_loading_code(
     )
 
     disallowed = (
-        "OpenRouter",
-        "LocalEmbedding",
-        "LocalReranker",
-        "SentenceTransformer",
-        "CrossEncoder",
+        "from google",
+        "google.genai",
+        "sentence_transformers",
         "os.environ",
-        "FastAPI",
+        "from fastapi",
         "Request",
         "Pydantic",
     )
@@ -574,3 +573,66 @@ def test_application_instance_metrics_recorders_are_isolated() -> None:
     assert second.query_engine._metrics_recorder is second.metrics_recorder
     assert first.metrics_recorder.snapshot() == ()
     assert second.metrics_recorder.snapshot() == ()
+
+
+def test_settings_driven_gemini_document_embedding_provider_is_configured() -> None:
+    from loreforge.embeddings.gemini import GeminiEmbeddingProvider
+
+    settings = load_settings(
+        {
+            "LOREFORGE_DOCUMENT_EMBEDDINGS_PROVIDER": "gemini",
+            "LOREFORGE_GEMINI_API_KEY": "placeholder-key",
+            "LOREFORGE_GEMINI_EMBEDDING_MODEL": "gemini-embedding-001",
+        }
+    )
+
+    container = create_application_container(settings=settings)
+
+    assert type(container.document_indexing_service._embedding_provider) is (
+        GeminiEmbeddingProvider
+    )
+    assert container.query_engine is None
+
+
+def test_settings_driven_gemini_query_runtime_uses_configured_providers() -> None:
+    from loreforge.embeddings.gemini import GeminiEmbeddingProvider
+    from loreforge.generation.gemini import GeminiLLMProvider
+    from loreforge.reranking.local import LocalCrossEncoderReranker
+
+    settings = load_settings(
+        {
+            "LOREFORGE_QUERY_EMBEDDINGS_PROVIDER": "gemini",
+            "LOREFORGE_RERANKER_PROVIDER": "local",
+            "LOREFORGE_LLM_PROVIDER": "gemini",
+            "LOREFORGE_GEMINI_API_KEY": "placeholder-key",
+            "LOREFORGE_GEMINI_EMBEDDING_MODEL": "gemini-embedding-001",
+            "LOREFORGE_GEMINI_GENERATION_MODEL": "gemini-2.5-flash",
+            "LOREFORGE_LOCAL_RERANKER_MODEL": "local-reranker",
+        }
+    )
+
+    container = create_application_container(settings=settings)
+
+    assert type(container.query_engine) is ProductionGroundedQueryEngine
+    assert container.query_engine is not None
+    assert type(container.query_engine._query_embedder) is GeminiEmbeddingProvider
+    assert type(container.query_engine._reranker) is LocalCrossEncoderReranker
+    assert type(container.query_engine._answer_generator) is GeminiLLMProvider
+
+
+def test_settings_driven_gemini_query_runtime_requires_reranker() -> None:
+    settings = load_settings(
+        {
+            "LOREFORGE_QUERY_EMBEDDINGS_PROVIDER": "gemini",
+            "LOREFORGE_LLM_PROVIDER": "gemini",
+            "LOREFORGE_GEMINI_API_KEY": "placeholder-key",
+            "LOREFORGE_GEMINI_EMBEDDING_MODEL": "gemini-embedding-001",
+            "LOREFORGE_GEMINI_GENERATION_MODEL": "gemini-2.5-flash",
+        }
+    )
+
+    container = create_application_container(settings=settings)
+
+    assert container.query_engine is None
+    with pytest.raises(AskMeUnavailableError):
+        container.askme_service.ask(AskMeRequest(QUESTION))

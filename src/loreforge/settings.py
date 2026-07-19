@@ -103,7 +103,7 @@ class LoggingSettings:
 
 @dataclass(frozen=True, slots=True)
 class GeminiSettings:
-    """Gemini provider settings prepared for future adapters."""
+    """Gemini provider settings for embedding and generation adapters."""
 
     api_key: str | None = None
     generation_model: str | None = None
@@ -175,11 +175,34 @@ class ProviderSettings:
     local: LocalProviderSettings = field(default_factory=LocalProviderSettings)
 
     def __post_init__(self) -> None:
+        supported_embedding_providers = (
+            ProviderSelection.DISABLED,
+            ProviderSelection.LOCAL,
+            ProviderSelection.GEMINI,
+        )
+        if self.document_embeddings not in supported_embedding_providers:
+            msg = (
+                "LOREFORGE_DOCUMENT_EMBEDDINGS_PROVIDER must be disabled, "
+                "local, or gemini"
+            )
+            raise SettingsError(msg)
+        if self.query_embeddings not in supported_embedding_providers:
+            msg = (
+                "LOREFORGE_QUERY_EMBEDDINGS_PROVIDER must be disabled, local, or gemini"
+            )
+            raise SettingsError(msg)
         if self.reranker not in (ProviderSelection.DISABLED, ProviderSelection.LOCAL):
             msg = (
                 "LOREFORGE_RERANKER_PROVIDER must be disabled or local "
                 "until another reranker adapter exists"
             )
+            raise SettingsError(msg)
+        if self.llm not in (
+            ProviderSelection.DISABLED,
+            ProviderSelection.GEMINI,
+            ProviderSelection.OPENROUTER,
+        ):
+            msg = "LOREFORGE_LLM_PROVIDER must be disabled, gemini, or openrouter"
             raise SettingsError(msg)
 
         if self.llm == ProviderSelection.GEMINI:
@@ -368,9 +391,11 @@ class LoreForgeSettings:
 
 def load_settings(
     environ: Mapping[str, str] | None = None,
+    *,
+    env_file: Path | str | None = ".env",
 ) -> LoreForgeSettings:
-    """Load strongly typed settings from an environment mapping."""
-    values = os.environ if environ is None else environ
+    """Load strongly typed settings from an environment mapping and optional file."""
+    values = _settings_values(environ=environ, env_file=env_file)
     return LoreForgeSettings(
         application=ApplicationSettings(
             environment=_enum(
@@ -526,6 +551,53 @@ def load_settings(
             ),
         ),
     )
+
+
+def _settings_values(
+    *,
+    environ: Mapping[str, str] | None,
+    env_file: Path | str | None,
+) -> Mapping[str, str]:
+    if environ is not None:
+        return environ
+
+    values = _read_env_file(env_file)
+    values.update(os.environ)
+    return values
+
+
+def _read_env_file(env_file: Path | str | None) -> dict[str, str]:
+    if env_file is None:
+        return {}
+
+    path = Path(env_file)
+    if not path.exists():
+        return {}
+
+    values: dict[str, str] = {}
+    for line_number, raw_line in enumerate(
+        path.read_text(encoding="utf-8").splitlines(),
+        start=1,
+    ):
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if "=" not in line:
+            msg = f"{path} line {line_number} must use KEY=VALUE format"
+            raise SettingsError(msg)
+        name, raw_value = line.split("=", 1)
+        name = name.strip()
+        if not name:
+            msg = f"{path} line {line_number} must include a variable name"
+            raise SettingsError(msg)
+        values[name] = _unquote_env_value(raw_value.strip())
+    return values
+
+
+def _unquote_env_value(value: str) -> str:
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
+        return value[1:-1]
+    return value
 
 
 def _string(values: Mapping[str, str], name: str, default: str) -> str:

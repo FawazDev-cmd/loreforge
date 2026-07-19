@@ -174,3 +174,69 @@ def test_application_container_stores_validated_settings() -> None:
     container = create_application_container(settings=settings)
 
     assert container.settings is settings
+
+
+def test_load_settings_explicit_mapping_does_not_read_env_file(tmp_path: Path) -> None:
+    env_file = tmp_path / ".env"
+    env_file.write_text(
+        "LOREFORGE_ENVIRONMENT=testing\nLOREFORGE_API_PORT=9000\n",
+        encoding="utf-8",
+    )
+
+    settings = load_settings(
+        {"LOREFORGE_API_PORT": "9100"},
+        env_file=env_file,
+    )
+
+    assert settings.application.environment is RuntimeEnvironment.DEVELOPMENT
+    assert settings.api.port == 9100
+
+
+def test_load_settings_environment_overrides_env_file(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    env_file = tmp_path / ".env"
+    env_file.write_text(
+        "LOREFORGE_ENVIRONMENT=testing\nLOREFORGE_API_PORT=9000\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("LOREFORGE_API_PORT", "9100")
+
+    settings = load_settings(env_file=env_file)
+
+    assert settings.application.environment is RuntimeEnvironment.TESTING
+    assert settings.api.port == 9100
+
+
+def test_load_settings_reads_env_file_when_no_mapping_is_supplied(
+    tmp_path: Path,
+) -> None:
+    env_file = tmp_path / ".env"
+    env_file.write_text(
+        "LOREFORGE_ENVIRONMENT=testing\nLOREFORGE_LOG_LEVEL='debug'\n",
+        encoding="utf-8",
+    )
+
+    settings = load_settings(env_file=env_file)
+
+    assert settings.application.environment is RuntimeEnvironment.TESTING
+    assert settings.logging.level is LogLevel.DEBUG
+
+
+def test_load_settings_rejects_malformed_env_file(tmp_path: Path) -> None:
+    env_file = tmp_path / ".env"
+    env_file.write_text("LOREFORGE_ENVIRONMENT\n", encoding="utf-8")
+
+    with pytest.raises(SettingsError, match="KEY=VALUE"):
+        load_settings(env_file=env_file)
+
+
+def test_settings_reject_openrouter_for_embeddings() -> None:
+    with pytest.raises(SettingsError, match="LOREFORGE_DOCUMENT_EMBEDDINGS_PROVIDER"):
+        load_settings({"LOREFORGE_DOCUMENT_EMBEDDINGS_PROVIDER": "openrouter"})
+
+
+def test_settings_reject_local_llm_provider() -> None:
+    with pytest.raises(SettingsError, match="LOREFORGE_LLM_PROVIDER"):
+        load_settings({"LOREFORGE_LLM_PROVIDER": "local"})

@@ -1,4 +1,4 @@
-# LoreForge
+﻿# LoreForge
 
 LoreForge is a Python 3.13, FastAPI-based backend for a production-minded retrieval-augmented assistant named AskMe. It is a public portfolio project focused on enterprise RAG engineering: ingestion, retrieval, grounded generation, citation enforcement, evaluation, observability, testing, and reproducible local development.
 
@@ -14,13 +14,13 @@ Implemented and verified:
 - deterministic text normalization
 - deterministic citation-aware chunking
 - ingestion orchestration
-- document embedding contracts and local Sentence Transformers provider
+- document embedding contracts, local Sentence Transformers provider, and Gemini embedding provider
 - in-memory vector index
 - in-memory BM25 lexical index
 - hybrid retrieval with Reciprocal Rank Fusion
 - cross-encoder reranking contract and local provider
 - grounded evidence-context and prompt construction
-- provider-independent generation contract
+- provider-independent generation contract and Gemini generation provider
 - OpenRouter generation adapter
 - citation extraction and enforcement
 - validated grounded-answer models
@@ -144,10 +144,10 @@ Production mode fails fast unless `LOREFORGE_PUBLIC_BASE_URL` is configured. Pro
 
 Important provider behavior:
 
-- Gemini settings are defined for future Day 33 adapters, but Gemini runtime is not implemented yet.
-- OpenRouter settings are defined and the existing adapter remains available, but it is not automatically wired by default.
-- Local embedding/reranking model names are configurable, but local models still load lazily only when their providers are explicitly constructed.
-- The default `/ask` route still returns `503` until concrete query embedding, reranking, LLM providers, and indexed evidence are supplied through the composition root.
+- Gemini embedding and generation adapters are implemented behind provider protocols and are selected only through typed settings.
+- OpenRouter settings are defined and the existing adapter remains available; it is selected only through typed settings.
+- Local embedding/reranking model names are configurable, and local models still load lazily only when their providers are explicitly constructed.
+- The default `/ask` route still returns `503` until query embedding, reranking, LLM providers, and indexed evidence are all configured. Gemini query and LLM providers alone are not enough if reranking remains disabled.
 
 Key configuration groups documented in `.env.example`:
 
@@ -319,7 +319,7 @@ Run all tests:
 uv run --locked pytest
 ```
 
-The default test suite is offline and deterministic. Provider and integration boundaries use fakes or injected transports; tests must not require live model downloads, OpenRouter, network access, sleeps, or randomness.
+The default test suite is offline and deterministic. Provider and integration boundaries use fakes or injected clients/transports; tests must not require live model downloads, Gemini, OpenRouter, network access, sleeps, or randomness.`r`n`r`nAn opt-in Gemini smoke test exists at `tests/integration/test_gemini_live_smoke.py`. Run it only when you intentionally want a live provider check and have configured a local ignored `.env` with Gemini settings:`r`n`r`n```bash`r`nLOREFORGE_RUN_LIVE_GEMINI_SMOKE=true uv run --locked pytest tests/integration/test_gemini_live_smoke.py`r`n```
 
 ## Linting and Type Checking
 
@@ -364,7 +364,7 @@ There is currently no CI configuration in the repository. A future CI workflow s
 
 Before deploying beyond local development, add and verify:
 
-- explicit provider configuration loading
+- live provider operational validation with approved credentials
 - secret management outside source control
 - production process management
 - persistence for catalog/index state if restart durability is required
@@ -378,7 +378,7 @@ Before deploying beyond local development, add and verify:
 - Runtime catalog, vector index, BM25 index, and metrics recorder are in memory only.
 - Default `/ask` is intentionally unavailable without injected providers.
 - Local embedding/reranking providers may download or load model artifacts when used outside the default app.
-- OpenRouter exists as an adapter but is not wired by default and requires explicit credentials/configuration.
+- Gemini and OpenRouter exist as adapters but are disabled by default and require explicit credentials/configuration.
 - No authentication or authorization is implemented.
 - No persistent document storage is implemented.
 - No Docker or CI files are present.

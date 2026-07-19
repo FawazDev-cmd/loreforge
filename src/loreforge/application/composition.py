@@ -15,7 +15,12 @@ from loreforge.observability import InMemoryMetricsRecorder
 from loreforge.query import ProductionGroundedQueryEngine
 from loreforge.reranking import RerankerProvider
 from loreforge.retrieval.bm25 import InMemoryBM25Index
-from loreforge.settings import LoreForgeSettings, load_settings
+from loreforge.settings import (
+    LoreForgeSettings,
+    ProviderSelection,
+    SettingsError,
+    load_settings,
+)
 from loreforge.vector_index import InMemoryVectorIndex
 
 _UNAVAILABLE_DETAIL = "AskMe is temporarily unavailable."
@@ -63,12 +68,14 @@ def create_application_container(
         vector_index=vector_index,
         lexical_index=lexical_index,
         factories=factories,
+        settings=runtime_settings,
     )
     query_engine = _create_query_engine(
         vector_index=vector_index,
         lexical_index=lexical_index,
         factories=factories,
         metrics_recorder=metrics_recorder,
+        settings=runtime_settings,
     )
     askme_service = _create_askme_service(
         factories=factories,
@@ -112,6 +119,7 @@ def _create_document_indexing_service(
     vector_index: InMemoryVectorIndex,
     lexical_index: InMemoryBM25Index,
     factories: CompositionFactories | None,
+    settings: LoreForgeSettings,
 ) -> DocumentIndexingService:
     if (
         factories is not None
@@ -131,7 +139,7 @@ def _create_document_indexing_service(
         return service
 
     ingestor = _create_document_ingestor(factories)
-    embedding_provider = _create_document_embedding_provider(factories)
+    embedding_provider = _create_document_embedding_provider(factories, settings)
     return DocumentIndexingService(
         catalog_service=catalog_service,
         ingestor=ingestor,
@@ -147,19 +155,13 @@ def _create_query_engine(
     lexical_index: InMemoryBM25Index,
     factories: CompositionFactories | None,
     metrics_recorder: InMemoryMetricsRecorder,
+    settings: LoreForgeSettings,
 ) -> ProductionGroundedQueryEngine | None:
-    if factories is None:
+    query_embedder = _create_query_embedding_provider(factories, settings)
+    reranker = _create_reranker_provider(factories, settings)
+    answer_generator = _create_llm_provider(factories, settings)
+    if query_embedder is None or reranker is None or answer_generator is None:
         return None
-    if (
-        factories.query_embedding_provider_factory is None
-        or factories.reranker_provider_factory is None
-        or factories.llm_provider_factory is None
-    ):
-        return None
-
-    query_embedder = factories.query_embedding_provider_factory()
-    reranker = factories.reranker_provider_factory()
-    answer_generator = factories.llm_provider_factory()
 
     return ProductionGroundedQueryEngine(
         query_embedder=query_embedder,
@@ -179,10 +181,149 @@ def _create_document_ingestor(factories: CompositionFactories | None) -> PdfInge
 
 def _create_document_embedding_provider(
     factories: CompositionFactories | None,
+    settings: LoreForgeSettings,
 ) -> EmbeddingProvider | None:
-    if factories is None or factories.document_embedding_provider_factory is None:
+    if (
+        factories is not None
+        and factories.document_embedding_provider_factory is not None
+    ):
+        return factories.document_embedding_provider_factory()
+    provider = _embedding_provider_from_settings(
+        selection=settings.providers.document_embeddings,
+        settings=settings,
+    )
+    if provider is None:
         return None
-    return factories.document_embedding_provider_factory()
+    if not isinstance(provider, EmbeddingProvider):
+        msg = "configured document embedding provider must support embeddings"
+        raise TypeError(msg)
+    return provider
+
+
+def _create_query_embedding_provider(
+    factories: CompositionFactories | None,
+    settings: LoreForgeSettings,
+) -> QueryEmbeddingProvider | None:
+    if factories is not None and factories.query_embedding_provider_factory is not None:
+        return factories.query_embedding_provider_factory()
+    provider = _embedding_provider_from_settings(
+        selection=settings.providers.query_embeddings,
+        settings=settings,
+    )
+    if provider is None:
+        return None
+    if not isinstance(provider, QueryEmbeddingProvider):
+        msg = "configured query embedding provider must support query embeddings"
+        raise TypeError(msg)
+    return provider
+
+
+def _embedding_provider_from_settings(
+    *,
+    selection: ProviderSelection,
+    settings: LoreForgeSettings,
+) -> EmbeddingProvider | QueryEmbeddingProvider | None:
+    if selection == ProviderSelection.DISABLED:
+        return None
+    if selection == ProviderSelection.LOCAL:
+        from loreforge.embeddings.local import LocalSentenceTransformerProvider
+
+        return LocalSentenceTransformerProvider(
+            model_name=settings.providers.local.embedding_model,
+            batch_size=settings.providers.local.batch_size,
+        )
+    if selection == ProviderSelection.GEMINI:
+        from loreforge.embeddings.gemini import (
+            GeminiEmbeddingConfig,
+            GeminiEmbeddingProvider,
+        )
+
+        gemini = settings.providers.gemini
+        return GeminiEmbeddingProvider(
+            GeminiEmbeddingConfig(
+                api_key=_required(gemini.api_key, "LOREFORGE_GEMINI_API_KEY"),
+                model=_required(
+                    gemini.embedding_model,
+                    "LOREFORGE_GEMINI_EMBEDDING_MODEL",
+                ),
+                timeout_seconds=gemini.timeout_seconds,
+            )
+        )
+    msg = "unsupported embedding provider selection"
+    raise SettingsError(msg)
+
+
+def _create_reranker_provider(
+    factories: CompositionFactories | None,
+    settings: LoreForgeSettings,
+) -> RerankerProvider | None:
+    if factories is not None and factories.reranker_provider_factory is not None:
+        return factories.reranker_provider_factory()
+    if settings.providers.reranker == ProviderSelection.DISABLED:
+        return None
+    if settings.providers.reranker == ProviderSelection.LOCAL:
+        from loreforge.reranking.local import LocalCrossEncoderReranker
+
+        return LocalCrossEncoderReranker(
+            model_name=settings.providers.local.reranker_model,
+            batch_size=settings.providers.local.batch_size,
+        )
+    msg = "unsupported reranker provider selection"
+    raise SettingsError(msg)
+
+
+def _create_llm_provider(
+    factories: CompositionFactories | None,
+    settings: LoreForgeSettings,
+) -> LLMProvider | None:
+    if factories is not None and factories.llm_provider_factory is not None:
+        return factories.llm_provider_factory()
+    if settings.providers.llm == ProviderSelection.DISABLED:
+        return None
+    if settings.providers.llm == ProviderSelection.GEMINI:
+        from loreforge.generation.gemini import (
+            GeminiGenerationConfig,
+            GeminiLLMProvider,
+        )
+
+        gemini = settings.providers.gemini
+        return GeminiLLMProvider(
+            GeminiGenerationConfig(
+                api_key=_required(gemini.api_key, "LOREFORGE_GEMINI_API_KEY"),
+                model=_required(
+                    gemini.generation_model,
+                    "LOREFORGE_GEMINI_GENERATION_MODEL",
+                ),
+                timeout_seconds=gemini.timeout_seconds,
+            )
+        )
+    if settings.providers.llm == ProviderSelection.OPENROUTER:
+        from loreforge.generation.openrouter import (
+            OpenRouterConfig,
+            OpenRouterLLMProvider,
+        )
+
+        openrouter = settings.providers.openrouter
+        return OpenRouterLLMProvider(
+            OpenRouterConfig(
+                api_key=_required(
+                    openrouter.api_key,
+                    "LOREFORGE_OPENROUTER_API_KEY",
+                ),
+                model=_required(openrouter.model, "LOREFORGE_OPENROUTER_MODEL"),
+                base_url=openrouter.base_url,
+                timeout_seconds=openrouter.timeout_seconds,
+            )
+        )
+    msg = "unsupported LLM provider selection"
+    raise SettingsError(msg)
+
+
+def _required(value: str | None, name: str) -> str:
+    if value is None:
+        msg = f"{name} is required"
+        raise SettingsError(msg)
+    return value
 
 
 def _unavailable_askme_service() -> AskMeService:

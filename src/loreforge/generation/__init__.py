@@ -18,6 +18,11 @@ from loreforge.generation.evidence import (
     EvidenceItem,
     build_evidence_context,
 )
+from loreforge.generation.gemini import (
+    GeminiGenerationConfig,
+    GeminiGenerationError,
+    GeminiLLMProvider,
+)
 from loreforge.generation.models import (
     GenerationRequest,
     GenerationResponse,
@@ -55,6 +60,9 @@ __all__ = [
     "EvidenceItem",
     "GenerationRequest",
     "GenerationResponse",
+    "GeminiGenerationConfig",
+    "GeminiGenerationError",
+    "GeminiLLMProvider",
     "GroundedAnswer",
     "GroundedGenerationError",
     "GroundedGenerationRequest",
