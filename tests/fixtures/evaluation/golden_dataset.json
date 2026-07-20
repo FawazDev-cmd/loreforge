@@ -1,0 +1,135 @@
+{
+  "name": "loreforge-golden-rag-fixture",
+  "schema_version": "1.0",
+  "description": "Synthetic public-safe deterministic RAG evaluation fixture.",
+  "metadata": {
+    "content_policy": "synthetic",
+    "mode": "offline-fixture"
+  },
+  "cases": [
+    {
+      "case_id": "exact-lexical-refund-window",
+      "question": "What is the refund window?",
+      "tags": ["lexical", "citation"],
+      "expected_chunk_ids": ["00000000-0000-0000-0000-000000000101"],
+      "expected_source_document_ids": ["00000000-0000-0000-0000-000000000201"],
+      "expected_citation_ids": ["S1"],
+      "relevance_grades": {
+        "00000000-0000-0000-0000-000000000101": 3,
+        "00000000-0000-0000-0000-000000000102": 1
+      },
+      "required_facts": ["refund window is 14 days"],
+      "forbidden_claims": ["refund window is 30 days"],
+      "observed_retrieved_chunk_ids": [
+        "00000000-0000-0000-0000-000000000101",
+        "00000000-0000-0000-0000-000000000102"
+      ],
+      "observed_retrieved_source_document_ids": [
+        "00000000-0000-0000-0000-000000000201",
+        "00000000-0000-0000-0000-000000000202"
+      ],
+      "observed_evidence_chunk_ids": ["00000000-0000-0000-0000-000000000101"],
+      "observed_citation_ids": ["S1"],
+      "observed_answer_text": "The refund window is 14 days."
+    },
+    {
+      "case_id": "semantic-plan-cancellation",
+      "question": "Can an account be ended before renewal?",
+      "tags": ["semantic"],
+      "expected_chunk_ids": ["00000000-0000-0000-0000-000000000103"],
+      "expected_source_document_ids": ["00000000-0000-0000-0000-000000000203"],
+      "expected_citation_ids": ["S1"],
+      "relevance_grades": {
+        "00000000-0000-0000-0000-000000000103": 3,
+        "00000000-0000-0000-0000-000000000104": 1
+      },
+      "required_facts": ["cancel before renewal"],
+      "observed_retrieved_chunk_ids": [
+        "00000000-0000-0000-0000-000000000103",
+        "00000000-0000-0000-0000-000000000104"
+      ],
+      "observed_retrieved_source_document_ids": [
+        "00000000-0000-0000-0000-000000000203",
+        "00000000-0000-0000-0000-000000000204"
+      ],
+      "observed_evidence_chunk_ids": ["00000000-0000-0000-0000-000000000103"],
+      "observed_citation_ids": ["S1"],
+      "observed_answer_text": "Customers can cancel before renewal."
+    },
+    {
+      "case_id": "hybrid-address-update",
+      "question": "Where do I update my shipping address?",
+      "tags": ["hybrid", "near-match"],
+      "expected_chunk_ids": ["00000000-0000-0000-0000-000000000105"],
+      "expected_source_document_ids": ["00000000-0000-0000-0000-000000000205"],
+      "expected_citation_ids": ["S1"],
+      "required_facts": ["shipping address is updated in profile settings"],
+      "observed_retrieved_chunk_ids": [
+        "00000000-0000-0000-0000-000000000105",
+        "00000000-0000-0000-0000-000000000106"
+      ],
+      "observed_retrieved_source_document_ids": [
+        "00000000-0000-0000-0000-000000000205",
+        "00000000-0000-0000-0000-000000000206"
+      ],
+      "observed_evidence_chunk_ids": ["00000000-0000-0000-0000-000000000105"],
+      "observed_citation_ids": ["S1"],
+      "observed_answer_text": "The shipping address is updated in profile settings."
+    },
+    {
+      "case_id": "metadata-filter-eu-policy",
+      "question": "Which retention policy applies to EU records?",
+      "tags": ["metadata-filter"],
+      "expected_chunk_ids": ["00000000-0000-0000-0000-000000000107"],
+      "expected_source_document_ids": ["00000000-0000-0000-0000-000000000207"],
+      "expected_citation_ids": ["S1"],
+      "required_facts": ["eu records use the eu retention policy"],
+      "observed_retrieved_chunk_ids": ["00000000-0000-0000-0000-000000000107"],
+      "observed_retrieved_source_document_ids": ["00000000-0000-0000-0000-000000000207"],
+      "observed_evidence_chunk_ids": ["00000000-0000-0000-0000-000000000107"],
+      "observed_citation_ids": ["S1"],
+      "observed_answer_text": "EU records use the EU retention policy."
+    },
+    {
+      "case_id": "ownership-isolation",
+      "question": "Can owner B see owner A's private document?",
+      "tags": ["ownership", "no-answer"],
+      "expect_no_evidence": true,
+      "expect_abstention": true,
+      "observed_retrieved_chunk_ids": [],
+      "observed_retrieved_source_document_ids": [],
+      "observed_evidence_chunk_ids": [],
+      "observed_citation_ids": [],
+      "observed_answer_text": "I do not have enough evidence to answer."
+    },
+    {
+      "case_id": "multi-source-escalation",
+      "question": "What are the support escalation steps and expected timing?",
+      "tags": ["multi-source", "citation"],
+      "expected_chunk_ids": [
+        "00000000-0000-0000-0000-000000000108",
+        "00000000-0000-0000-0000-000000000109"
+      ],
+      "expected_source_document_ids": [
+        "00000000-0000-0000-0000-000000000208",
+        "00000000-0000-0000-0000-000000000209"
+      ],
+      "expected_citation_ids": ["S1", "S2"],
+      "required_facts": ["escalate to tier two", "response target is two business days"],
+      "observed_retrieved_chunk_ids": [
+        "00000000-0000-0000-0000-000000000108",
+        "00000000-0000-0000-0000-000000000109"
+      ],
+      "observed_retrieved_source_document_ids": [
+        "00000000-0000-0000-0000-000000000208",
+        "00000000-0000-0000-0000-000000000209"
+      ],
+      "observed_evidence_chunk_ids": [
+        "00000000-0000-0000-0000-000000000108",
+        "00000000-0000-0000-0000-000000000109"
+      ],
+      "observed_citation_ids": ["S1", "S2"],
+      "observed_answer_text": "Escalate to tier two, and the response target is two business days."
+    }
+  ]
+}

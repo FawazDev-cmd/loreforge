@@ -22,6 +22,7 @@ from loreforge.generation.validation_models import ValidatedGroundedAnswer
 from loreforge.observability import (
     MetricsRecorder,
     MonotonicClock,
+    OperationalMetricsRecorder,
     RequestTracer,
     RuntimeQueryObservation,
     UtcClock,
@@ -83,6 +84,7 @@ class ProductionGroundedQueryEngine:
         citation_enforcer: CitationEnforcer = validate_grounded_answer,
         reranking_stage: RerankingStage | None = None,
         metrics_recorder: MetricsRecorder | None = None,
+        operational_metrics: OperationalMetricsRecorder | None = None,
         trace_id_factory: Callable[[], UUID] = uuid4,
         monotonic_clock: MonotonicClock | None = None,
         utc_clock: UtcClock | None = None,
@@ -106,6 +108,7 @@ class ProductionGroundedQueryEngine:
         self._citation_enforcer = citation_enforcer
         self._reranking_stage = reranking_stage or _default_reranking_stage
         self._metrics_recorder = metrics_recorder
+        self._operational_metrics = operational_metrics
         self._trace_id_factory = trace_id_factory
         self._monotonic_clock = monotonic_clock
         self._utc_clock = utc_clock
@@ -341,15 +344,55 @@ class ProductionGroundedQueryEngine:
         except Exception as exc:
             raise QueryExecutionError(_QUERY_EXECUTION_ERROR) from exc
 
+    def _record_retrieval_metrics(
+        self,
+        duration_ms: float,
+        observation: RuntimeQueryObservation,
+        *,
+        success: bool,
+    ) -> None:
+        if self._operational_metrics is None:
+            return
+        labels = {"success": str(success)}
+        self._operational_metrics.increment("retrieval_query_total", labels=labels)
+        self._operational_metrics.observe_duration(
+            "retrieval_duration_ms",
+            duration_ms,
+            labels=labels,
+        )
+        self._increment_result_count("vector", observation.semantic_result_count)
+        self._increment_result_count("bm25", observation.lexical_result_count)
+        self._increment_result_count("fused", observation.fused_result_count)
+        self._increment_result_count("final", observation.reranked_result_count)
+        if observation.evidence_count == 0 or (
+            not success and observation.failure_category == "NoRelevantEvidenceError"
+        ):
+            self._operational_metrics.increment("retrieval_empty_result_total")
+
+    def _increment_result_count(self, stage: str, count: int | None) -> None:
+        if self._operational_metrics is None or count is None or count <= 0:
+            return
+        self._operational_metrics.increment(
+            "retrieval_candidate_total",
+            labels={"stage": stage},
+            amount=count,
+        )
+
     def _finish_success_safely(
         self,
         tracer: RequestTracer,
         observation: "_RuntimeObservationBuilder",
     ) -> None:
+        runtime_observation = observation.to_observation()
         try:
-            tracer.finish_success(observation=observation.to_observation())
+            trace = tracer.finish_success(observation=runtime_observation)
         except Exception:
             return
+        self._record_retrieval_metrics(
+            trace.duration_ms,
+            runtime_observation,
+            success=True,
+        )
 
     def _finish_failure_safely(
         self,
@@ -357,10 +400,16 @@ class ProductionGroundedQueryEngine:
         error: BaseException,
         observation: "_RuntimeObservationBuilder",
     ) -> None:
+        runtime_observation = observation.to_observation(error)
         try:
-            tracer.finish_failure(error, observation=observation.to_observation(error))
+            trace = tracer.finish_failure(error, observation=runtime_observation)
         except Exception:
             return
+        self._record_retrieval_metrics(
+            trace.duration_ms,
+            runtime_observation,
+            success=False,
+        )
 
 
 class _RuntimeObservationBuilder:

@@ -15,3 +15,12 @@ dist/
 !.env.example
 # Local AI development context
 .ai/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/coverage/
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+frontend/tsconfig.tsbuildinfo

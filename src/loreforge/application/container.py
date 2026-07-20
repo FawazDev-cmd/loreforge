@@ -12,7 +12,10 @@ from loreforge.auth import (
 from loreforge.catalog import CatalogService
 from loreforge.database import DatabaseRuntime
 from loreforge.indexing import DocumentIndexingService
-from loreforge.observability import InMemoryMetricsRecorder
+from loreforge.observability import (
+    InMemoryMetricsRecorder,
+    InMemoryOperationalMetricsRecorder,
+)
 from loreforge.query import ProductionGroundedQueryEngine
 from loreforge.retrieval.bm25 import InMemoryBM25Index
 from loreforge.settings import LoreForgeSettings
@@ -30,6 +33,9 @@ class ApplicationContainer:
     lexical_index: InMemoryBM25Index
     query_engine: ProductionGroundedQueryEngine | None
     metrics_recorder: InMemoryMetricsRecorder
+    operational_metrics: InMemoryOperationalMetricsRecorder = field(
+        default_factory=InMemoryOperationalMetricsRecorder
+    )
     authenticator: Authenticator = field(default_factory=DisabledAuthenticator)
     user_repository: UserRepository = field(default_factory=InMemoryUserRepository)
     settings: LoreForgeSettings = field(default_factory=LoreForgeSettings)
@@ -59,6 +65,9 @@ class ApplicationContainer:
             raise TypeError(msg)
         if type(self.metrics_recorder) is not InMemoryMetricsRecorder:
             msg = "metrics_recorder must be an InMemoryMetricsRecorder"
+            raise TypeError(msg)
+        if type(self.operational_metrics) is not InMemoryOperationalMetricsRecorder:
+            msg = "operational_metrics must be an InMemoryOperationalMetricsRecorder"
             raise TypeError(msg)
         if type(self.settings) is not LoreForgeSettings:
             msg = "settings must be LoreForgeSettings"

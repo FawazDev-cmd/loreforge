@@ -1,3 +1,5 @@
+> Historical note: this audit captured Day 31 gaps at the time it was written. Several items listed here, including settings, authentication, ownership, PostgreSQL, Docker packaging, observability, and evaluation, were implemented in later milestones. Use `README.md`, `.ai/current_state.md`, and `docs/production-readiness-checklist.md` for current status.
+
 # Production Gap Audit
 
 Day 34 status note: this audit was written before the PostgreSQL persistence milestone. Catalog and indexing-attempt metadata now have SQLAlchemy/PostgreSQL adapters and Alembic migrations; semantic vector retrieval, BM25 retrieval, original document storage, metrics, and query observations remain non-durable.

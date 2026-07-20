@@ -1,0 +1,26 @@
+{
+  "name": "loreforge-degraded-rag-fixture",
+  "schema_version": "1.0",
+  "description": "Synthetic deterministic fixture with intentional retrieval and citation regressions.",
+  "metadata": {
+    "content_policy": "synthetic",
+    "mode": "offline-fixture"
+  },
+  "cases": [
+    {
+      "case_id": "exact-lexical-refund-window",
+      "question": "What is the refund window?",
+      "tags": ["lexical", "citation"],
+      "expected_chunk_ids": ["00000000-0000-0000-0000-000000000101"],
+      "expected_source_document_ids": ["00000000-0000-0000-0000-000000000201"],
+      "expected_citation_ids": ["S1"],
+      "required_facts": ["refund window is 14 days"],
+      "forbidden_claims": ["refund window is 30 days"],
+      "observed_retrieved_chunk_ids": ["00000000-0000-0000-0000-000000000102"],
+      "observed_retrieved_source_document_ids": ["00000000-0000-0000-0000-000000000202"],
+      "observed_evidence_chunk_ids": ["00000000-0000-0000-0000-000000000102"],
+      "observed_citation_ids": ["S2"],
+      "observed_answer_text": "The refund window is 30 days."
+    }
+  ]
+}

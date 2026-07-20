@@ -39,7 +39,10 @@ from loreforge.indexing import (
     InMemoryIndexingStateRepository,
     PdfIngestor,
 )
-from loreforge.observability import InMemoryMetricsRecorder
+from loreforge.observability import (
+    InMemoryMetricsRecorder,
+    InMemoryOperationalMetricsRecorder,
+)
 from loreforge.query import ProductionGroundedQueryEngine
 from loreforge.reranking import RerankerProvider
 from loreforge.retrieval.bm25 import InMemoryBM25Index
@@ -100,6 +103,7 @@ def create_application_container(
     vector_index = InMemoryVectorIndex()
     lexical_index = InMemoryBM25Index()
     metrics_recorder = InMemoryMetricsRecorder()
+    operational_metrics = InMemoryOperationalMetricsRecorder()
     document_indexing_service = _create_document_indexing_service(
         catalog_service=catalog_service,
         vector_index=vector_index,
@@ -107,6 +111,7 @@ def create_application_container(
         indexing_state_repository=indexing_state_repository,
         chunk_repository=chunk_repository,
         embedding_repository=embedding_repository,
+        operational_metrics=operational_metrics,
         factories=factories,
         settings=runtime_settings,
     )
@@ -115,6 +120,7 @@ def create_application_container(
         lexical_index=lexical_index,
         factories=factories,
         metrics_recorder=metrics_recorder,
+        operational_metrics=operational_metrics,
         settings=runtime_settings,
     )
     askme_service = _create_askme_service(
@@ -129,6 +135,7 @@ def create_application_container(
         lexical_index=lexical_index,
         query_engine=query_engine,
         metrics_recorder=metrics_recorder,
+        operational_metrics=operational_metrics,
         authenticator=authenticator,
         user_repository=user_repository,
         settings=runtime_settings,
@@ -227,6 +234,7 @@ def _create_document_indexing_service(
     embedding_repository: EmbeddingRepository | None,
     factories: CompositionFactories | None,
     settings: LoreForgeSettings,
+    operational_metrics: InMemoryOperationalMetricsRecorder,
 ) -> DocumentIndexingService:
     if (
         factories is not None
@@ -256,6 +264,7 @@ def _create_document_indexing_service(
         indexing_state_repository=indexing_state_repository,
         chunk_repository=chunk_repository,
         embedding_repository=embedding_repository,
+        operational_metrics=operational_metrics,
     )
 
 
@@ -266,6 +275,7 @@ def _create_query_engine(
     factories: CompositionFactories | None,
     metrics_recorder: InMemoryMetricsRecorder,
     settings: LoreForgeSettings,
+    operational_metrics: InMemoryOperationalMetricsRecorder,
 ) -> ProductionGroundedQueryEngine | None:
     query_embedder = _create_query_embedding_provider(factories, settings)
     reranker = _create_reranker_provider(factories, settings)
@@ -280,6 +290,7 @@ def _create_query_engine(
         reranker=reranker,
         answer_generator=answer_generator,
         metrics_recorder=metrics_recorder,
+        operational_metrics=operational_metrics,
     )
 
 

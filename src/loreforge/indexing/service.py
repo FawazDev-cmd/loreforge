@@ -3,6 +3,7 @@
 from collections.abc import Callable
 from dataclasses import replace
 from datetime import datetime, timezone
+from time import perf_counter
 from typing import Protocol
 from uuid import UUID, uuid4
 
@@ -22,6 +23,7 @@ from loreforge.indexing.state import (
     IndexingStateRepository,
     IndexingStatus,
 )
+from loreforge.observability import OperationalMetricsRecorder
 from loreforge.retrieval.bm25 import InMemoryBM25Index
 from loreforge.retrieval.repository import ChunkRepository, EmbeddingRepository
 from loreforge.vector_index import InMemoryVectorIndex
@@ -62,6 +64,7 @@ class DocumentIndexingService:
         embedding_repository: EmbeddingRepository | None = None,
         indexing_state_id_factory: Callable[[], UUID] = uuid4,
         clock: Callable[[], datetime] | None = None,
+        operational_metrics: OperationalMetricsRecorder | None = None,
     ) -> None:
         self._catalog_service = catalog_service
         self._ingestor = ingestor
@@ -73,6 +76,7 @@ class DocumentIndexingService:
         self._embedding_repository = embedding_repository
         self._indexing_state_id_factory = indexing_state_id_factory
         self._clock = clock or _utc_now
+        self._operational_metrics = operational_metrics
 
     def index_pdf(
         self,
@@ -84,6 +88,7 @@ class DocumentIndexingService:
         owner_user_id: UUID | None = None,
     ) -> IndexedDocumentResult:
         """Ingest, embed, and index one cataloged PDF document."""
+        operation_start = perf_counter()
         validated_upload = validate_pdf_upload(
             filename=filename,
             media_type=media_type,
@@ -149,9 +154,27 @@ class DocumentIndexingService:
                 page_count=page_count,
                 chunk_count=chunk_count,
             )
+            self._record_indexing_metrics(
+                operation_start,
+                success=True,
+                chunk_count=chunk_count,
+                embedding_count=len(embedded_chunks),
+            )
         except DocumentIndexingExecutionError as exc:
+            self._record_indexing_metrics(
+                operation_start,
+                success=False,
+                chunk_count=len(chunk_ids),
+                embedding_count=0,
+            )
             self._handle_failed_indexing(document_id, chunk_ids, indexing_state_id, exc)
         except Exception as exc:
+            self._record_indexing_metrics(
+                operation_start,
+                success=False,
+                chunk_count=len(chunk_ids),
+                embedding_count=0,
+            )
             self._handle_failed_indexing(document_id, chunk_ids, indexing_state_id, exc)
 
         return IndexedDocumentResult(
@@ -160,6 +183,35 @@ class DocumentIndexingService:
             semantic_indexed_count=len(chunk_ids),
             lexical_indexed_count=len(chunk_ids),
         )
+
+    def _record_indexing_metrics(
+        self,
+        operation_start: float,
+        *,
+        success: bool,
+        chunk_count: int,
+        embedding_count: int,
+    ) -> None:
+        if self._operational_metrics is None:
+            return
+        labels = {"success": str(success)}
+        duration_ms = float((perf_counter() - operation_start) * 1000.0)
+        self._operational_metrics.increment("indexing_operation_total", labels=labels)
+        self._operational_metrics.observe_duration(
+            "indexing_duration_ms",
+            duration_ms,
+            labels=labels,
+        )
+        if chunk_count > 0:
+            self._operational_metrics.increment(
+                "indexing_chunk_total",
+                amount=chunk_count,
+            )
+        if embedding_count > 0:
+            self._operational_metrics.increment(
+                "indexing_embedding_total",
+                amount=embedding_count,
+            )
 
     def _validate_before_indexing(
         self,

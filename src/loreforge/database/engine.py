@@ -81,6 +81,9 @@ def run_migrations(settings: DatabaseSettings) -> None:
     if settings.url is None:
         msg = "database URL is required to run migrations"
         raise ValueError(msg)
+    if not migrations_path_exists(settings):
+        msg = "database migrations path does not exist"
+        raise ValueError(msg)
     config = Config("alembic.ini")
     config.set_main_option("script_location", settings.migrations_path)
     config.set_main_option("sqlalchemy.url", normalize_database_url(settings.url))

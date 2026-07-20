@@ -17,7 +17,10 @@ from loreforge.generation import (
     ValidatedGroundedAnswer,
     validate_grounded_answer,
 )
-from loreforge.observability import InMemoryMetricsRecorder
+from loreforge.observability import (
+    InMemoryMetricsRecorder,
+    InMemoryOperationalMetricsRecorder,
+)
 from loreforge.query import (
     NoRelevantEvidenceError,
     ProductionGroundedQueryEngine,
@@ -168,6 +171,7 @@ class EngineParts:
         self,
         *,
         metrics_recorder: InMemoryMetricsRecorder | None = None,
+        operational_metrics: InMemoryOperationalMetricsRecorder | None = None,
         monotonic_clock: "FakeMonotonicClock | None" = None,
         utc_clock: "FakeUtcClock | None" = None,
     ) -> ProductionGroundedQueryEngine:
@@ -183,6 +187,7 @@ class EngineParts:
             answer_generator=self.generator,
             citation_enforcer=self.citation_enforcer,
             metrics_recorder=metrics_recorder,
+            operational_metrics=operational_metrics,
             trace_id_factory=lambda: UUID("00000000-0000-0000-0000-000000000901"),
             monotonic_clock=monotonic_clock,
             utc_clock=utc_clock,
@@ -687,6 +692,70 @@ def test_successful_observed_query_records_runtime_trace() -> None:
     assert observation.provider_model == "offline-model"
     assert observation.finish_reason == "stop"
     assert observation.failure_category is None
+
+
+def test_successful_observed_query_records_operational_metrics() -> None:
+    trace_recorder = InMemoryMetricsRecorder()
+    operational_metrics = InMemoryOperationalMetricsRecorder()
+    parts = EngineParts()
+    clock = FakeMonotonicClock(tuple(float(value) for value in range(20)))
+
+    parts.engine(
+        metrics_recorder=trace_recorder,
+        operational_metrics=operational_metrics,
+        monotonic_clock=clock,
+        utc_clock=FakeUtcClock(),
+    ).answer(QUESTION)
+
+    snapshot = operational_metrics.snapshot().as_dict()
+    counters = snapshot["counters"]
+    durations = snapshot["durations"]
+    assert {
+        (item["name"], tuple(sorted(item["labels"].items()))): item["value"]
+        for item in counters
+    } == {
+        ("retrieval_candidate_total", (("stage", "bm25"),)): 2,
+        ("retrieval_candidate_total", (("stage", "final"),)): 2,
+        ("retrieval_candidate_total", (("stage", "fused"),)): 2,
+        ("retrieval_candidate_total", (("stage", "vector"),)): 2,
+        ("retrieval_query_total", (("success", "True"),)): 1,
+    }
+    assert durations == [
+        {
+            "name": "retrieval_duration_ms",
+            "labels": {"success": "True"},
+            "count": 1,
+            "total_ms": 21000.0,
+            "max_ms": 21000.0,
+        }
+    ]
+
+
+def test_observed_no_evidence_records_empty_operational_metric() -> None:
+    trace_recorder = InMemoryMetricsRecorder()
+    operational_metrics = InMemoryOperationalMetricsRecorder()
+    parts = EngineParts()
+    parts.semantic.results = ()
+    parts.lexical.results = ()
+    clock = FakeMonotonicClock(tuple(float(value) for value in range(9)))
+
+    with pytest.raises(NoRelevantEvidenceError):
+        parts.engine(
+            metrics_recorder=trace_recorder,
+            operational_metrics=operational_metrics,
+            monotonic_clock=clock,
+            utc_clock=FakeUtcClock(),
+        ).answer(QUESTION)
+
+    snapshot = operational_metrics.snapshot().as_dict()
+    counters = {
+        (item["name"], tuple(sorted(item["labels"].items()))): item["value"]
+        for item in snapshot["counters"]
+    }
+    assert counters == {
+        ("retrieval_empty_result_total", ()): 1,
+        ("retrieval_query_total", (("success", "False"),)): 1,
+    }
 
 
 def test_observed_no_evidence_failure_records_safe_trace_and_stops_generation() -> None:

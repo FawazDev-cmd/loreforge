@@ -419,6 +419,9 @@ class LoreForgeSettings:
             if self.application.public_base_url is None:
                 msg = "LOREFORGE_PUBLIC_BASE_URL is required in production environment"
                 raise SettingsError(msg)
+            if self.logging.level is LogLevel.DEBUG:
+                msg = "LOREFORGE_LOG_LEVEL must not be debug in production"
+                raise SettingsError(msg)
 
 
 def load_settings(

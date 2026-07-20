@@ -240,3 +240,14 @@ def test_settings_reject_openrouter_for_embeddings() -> None:
 def test_settings_reject_local_llm_provider() -> None:
     with pytest.raises(SettingsError, match="LOREFORGE_LLM_PROVIDER"):
         load_settings({"LOREFORGE_LLM_PROVIDER": "local"})
+
+
+def test_production_environment_rejects_debug_logging() -> None:
+    with pytest.raises(SettingsError, match="LOREFORGE_LOG_LEVEL"):
+        load_settings(
+            {
+                "LOREFORGE_ENVIRONMENT": "production",
+                "LOREFORGE_PUBLIC_BASE_URL": "https://loreforge.example.test",
+                "LOREFORGE_LOG_LEVEL": "debug",
+            }
+        )

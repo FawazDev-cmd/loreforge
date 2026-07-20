@@ -24,6 +24,7 @@ from loreforge.indexing import (
     IndexingStatus,
     InMemoryIndexingStateRepository,
 )
+from loreforge.observability import InMemoryOperationalMetricsRecorder
 from loreforge.retrieval.bm25 import BM25IndexError, InMemoryBM25Index
 from loreforge.vector_index import InMemoryVectorIndex, VectorIndexError
 
@@ -562,6 +563,7 @@ def _harness(
     indexing_state_repository: InMemoryIndexingStateRepository | None = None,
     chunk_repository: object | None = None,
     embedding_repository: object | None = None,
+    operational_metrics: InMemoryOperationalMetricsRecorder | None = None,
 ) -> Harness:
     catalog = CatalogService(InMemoryCatalogRepository())
     if register:
@@ -588,6 +590,7 @@ def _harness(
         indexing_state_repository=indexing_state_repository,
         chunk_repository=chunk_repository,
         embedding_repository=embedding_repository,
+        operational_metrics=operational_metrics,
     )
     return Harness(
         catalog=catalog,
@@ -628,6 +631,58 @@ def _embedded(chunk: DocumentChunk, vector: EmbeddingVector):
     from loreforge.embeddings.pipeline import EmbeddedChunk
 
     return EmbeddedChunk(chunk=chunk, vector=vector)
+
+
+def test_successful_indexing_records_operational_metrics() -> None:
+    operational_metrics = InMemoryOperationalMetricsRecorder()
+    harness = _harness(operational_metrics=operational_metrics)
+
+    harness.service.index_pdf(
+        document_id=DOC,
+        filename="policy.pdf",
+        media_type="application/pdf",
+        content=PDF_BYTES,
+    )
+
+    snapshot = operational_metrics.snapshot().as_dict()
+    counters = {
+        (item["name"], tuple(sorted(item["labels"].items()))): item["value"]
+        for item in snapshot["counters"]
+    }
+    assert counters == {
+        ("indexing_chunk_total", ()): 2,
+        ("indexing_embedding_total", ()): 2,
+        ("indexing_operation_total", (("success", "True"),)): 1,
+    }
+    assert snapshot["durations"][0]["name"] == "indexing_duration_ms"
+    assert snapshot["durations"][0]["labels"] == {"success": "True"}
+
+
+def test_failed_indexing_records_failure_operational_metrics() -> None:
+    operational_metrics = InMemoryOperationalMetricsRecorder()
+    harness = _harness(
+        embedding_provider=FakeEmbeddingProvider(error=RuntimeError("raw secret")),
+        operational_metrics=operational_metrics,
+    )
+
+    with pytest.raises(DocumentIndexingExecutionError):
+        harness.service.index_pdf(
+            document_id=DOC,
+            filename="policy.pdf",
+            media_type="application/pdf",
+            content=PDF_BYTES,
+        )
+
+    snapshot = operational_metrics.snapshot().as_dict()
+    assert snapshot["counters"] == [
+        {"name": "indexing_chunk_total", "labels": {}, "value": 2},
+        {
+            "name": "indexing_operation_total",
+            "labels": {"success": "False"},
+            "value": 1,
+        },
+    ]
+    assert snapshot["durations"][0]["labels"] == {"success": "False"}
 
 
 def test_successful_indexing_records_indexing_state_metadata() -> None:

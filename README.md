@@ -1,417 +1,316 @@
 # LoreForge
 
-LoreForge is a Python 3.13, FastAPI-based backend for a production-minded retrieval-augmented assistant named AskMe. It is a public portfolio project focused on enterprise RAG engineering: ingestion, retrieval, grounded generation, citation enforcement, evaluation, observability, testing, and reproducible local development.
+LoreForge is a Python 3.13 backend and React frontend foundation for a production-minded retrieval-augmented
+assistant named AskMe. It is a public portfolio project focused on enterprise
+RAG engineering: ingestion, retrieval, grounded generation, citation
+enforcement, evaluation, observability, persistence, authentication, and
+reproducible local development.
 
-The backend is intentionally local-first and zero-cost by default. The application starts without secrets or live providers, exposes health/admin/document/AskMe API routes, and keeps `/ask` honestly degraded until concrete embedding, reranking, and LLM providers are injected.
+The project is local-first and zero-cost by default. It starts without provider
+secrets, avoids live model calls during normal tests, and documents incomplete
+production areas instead of hiding them.
 
-## Current Capabilities
+## Problem Statement
 
-Implemented and verified:
+Enterprise RAG systems fail in ways that ordinary API tests do not catch:
 
-- FastAPI application startup and `/health`
-- PDF upload validation
-- page-aware PDF parsing
-- deterministic text normalization
-- deterministic citation-aware chunking
-- ingestion orchestration
-- document embedding contracts, local Sentence Transformers provider, and Gemini embedding provider
-- in-memory vector index
-- in-memory BM25 lexical index
+- documents are parsed or chunked incorrectly
+- retrieval misses relevant evidence
+- generated answers cite unsupported sources
+- ownership boundaries leak documents across users
+- provider failures expose unsafe details
+- quality regresses without visible HTTP errors
+
+LoreForge exists to demonstrate how to build and verify these boundaries in a
+small, inspectable backend.
+
+## Key Capabilities
+
+Implemented and tested:
+
+- FastAPI application with `/health`, `/ready`, `/metrics`, admin, document, and
+  AskMe routes
+- PDF upload validation, page-aware parsing, deterministic normalization, and
+  citation-aware chunking
+- ingestion-to-index orchestration with rollback behavior
+- document catalog, indexing state, user, ownership, chunk, embedding, and
+  retrieval metadata contracts
+- PostgreSQL persistence via SQLAlchemy and Alembic migrations
+- API-key bearer authentication and ownership isolation
+- embedding provider contracts, local Sentence Transformers provider, and Gemini
+  embedding provider
+- in-memory vector index and BM25 lexical index
 - hybrid retrieval with Reciprocal Rank Fusion
 - cross-encoder reranking contract and local provider
-- grounded evidence-context and prompt construction
-- provider-independent generation contract and Gemini generation provider
-- OpenRouter generation adapter
-- citation extraction and enforcement
-- validated grounded-answer models
-- AskMe service and API route
-- admin catalog API
-- PostgreSQL/Alembic persistence foundation for document and indexing metadata
-- document indexing API that populates shared semantic and lexical indexes
-- deterministic runtime observability for configured AskMe queries
-- deterministic evaluation primitives
-- offline integration tests for the configured RAG vertical slice
+- grounded evidence context, prompt construction, provider-independent
+  generation, Gemini generation, OpenRouter adapter, citation extraction, and
+  citation enforcement
+- production query composition engine
+- request IDs, structured request logging, readiness checks, and in-process
+  metrics
+- deterministic offline evaluation framework with regression thresholds and CLI
+- Dockerfile, `.dockerignore`, and Docker Compose configuration
 
-Not enabled by default:
+Default behavior:
 
-- live provider/model calls during default startup
-- automatic database migrations unless explicitly enabled
-- durable vector/BM25 indexes, uploaded PDF bytes, metrics, or query observations
-- authentication or authorization
-- Docker or CI execution files
-- frontend UI
+- providers are disabled
+- auth is disabled unless configured
+- PostgreSQL is disabled unless `LOREFORGE_DATABASE_URL` is set
+- `/ask` returns `503` until providers and indexed evidence are configured
+- live Gemini and database smoke tests are skipped unless explicitly enabled
 
-## Repository Structure
+## Architecture Summary
 
 ```text
+FastAPI adapters
+  -> application container and services
+  -> LoreForge-owned protocols and core workflows
+  -> infrastructure adapters
+  -> provider/database libraries
+```
+
+Core workflows are framework-independent where practical. FastAPI handles
+transport concerns; application services and provider/repository protocols carry
+the backend behavior.
+
+See [docs/architecture.md](docs/architecture.md) for request, ingestion,
+retrieval, evaluation, and observability lifecycle diagrams.
+
+## Technology Stack
+
+- Python 3.13
+- FastAPI and Uvicorn
+- uv
+- SQLAlchemy, Alembic, PostgreSQL via psycopg
+- pypdf
+- Sentence Transformers
+- Gemini through `google-genai`
+- pytest
+- Ruff
+- mypy
+- Docker and Docker Compose packaging
+- React, TypeScript, Vite, React Router, TanStack Query, React Hook Form, Zod, Vitest, and React Testing Library
+
+See [docs/dependencies.md](docs/dependencies.md) for the dependency audit.
+
+## Project Structure
+
+```text
+frontend/         React product shell, route architecture, API client foundation, and UI tokens
 src/loreforge/
   api/              FastAPI transport routes
   application/      application container and composition root
   askme/            framework-independent AskMe service contract
-  catalog/          document lifecycle models, service, and repository protocol
-  database/         SQLAlchemy metadata repositories, engine lifecycle, health checks
-  documents/        upload validation, parsing, normalization, chunking, ingestion
-  embeddings/       embedding models, provider protocol, local provider, pipeline
-  evaluation/       deterministic offline/runtime-compatible evaluation helpers
-  generation/       evidence, prompts, provider contracts, OpenRouter, citations
-  indexing/         document ingestion-to-index orchestration
-  observability/    traces, metrics recorder, clocks, summaries
+  auth/             user identity, auth protocols, API-key authenticator
+  catalog/          document lifecycle and ownership metadata
+  database/         SQLAlchemy models, repositories, engine lifecycle
+  documents/        upload, parsing, normalization, chunking, ingestion
+  embeddings/       embedding contracts, local provider, Gemini provider
+  evaluation/       deterministic offline quality regression framework
+  generation/       evidence, prompts, generation providers, citations
+  indexing/         ingestion-to-index orchestration
+  observability/    request context, traces, metrics, provider adapters
   query/            production grounded-query composition engine
-  reranking/        reranker models, provider protocol, local cross-encoder
-  retrieval/        semantic, BM25, hybrid/RRF retrieval models and logic
-  vector_index/     in-memory vector indexing and similarity
+  reranking/        reranker contracts and local provider
+  retrieval/        BM25, vector, hybrid/RRF, durable retrieval support
+  vector_index/     in-memory vector index and similarity
 
-migrations/         Alembic migrations for durable metadata tables
-tests/              offline unit, service, API, and integration tests
-docs/               focused design and workflow documentation
-.ai/                ignored project context and milestone state
+migrations/         Alembic migrations
+tests/              offline test suite and deterministic fixtures
+docs/               engineering documentation
 ```
 
-## Architecture
+## Local Development
 
-LoreForge keeps business logic framework-independent where practical. FastAPI routes are transport adapters that delegate to application services. Runtime state is owned by one immutable `ApplicationContainer` per application instance.
+Install dependencies:
 
-Default startup creates:
-
-- `CatalogService` backed by `InMemoryCatalogRepository` when no database URL is configured
-- shared `InMemoryVectorIndex`
-- shared `InMemoryBM25Index`
-- `DocumentIndexingService`
-- shared `InMemoryMetricsRecorder`
-- degraded `AskMeService` unless all query providers are supplied through `CompositionFactories`
-
-Configured startup can use `LOREFORGE_DATABASE_URL` to back catalog and indexing-attempt metadata with PostgreSQL through SQLAlchemy repositories. Semantic vector search and BM25 lexical search intentionally remain in memory until Day 35.
-
-Configured startup can inject:
-
-- document embedding provider
-- query embedding provider
-- reranker provider
-- LLM provider
-- custom AskMe service or document indexing service for tests/deployments
-
-The default app does not instantiate local models, read provider credentials, call OpenRouter, or make network requests during import/startup.
-
-## Local Setup
-
-Install `uv`, then create the environment:
-
-```bash
+```powershell
 uv sync --all-groups
 ```
 
-For locked verification runs, use the commands in [Verification](#verification).
+Run the API:
 
-## Run the API
-
-```bash
-uv run uvicorn loreforge.main:app --app-dir src
+```powershell
+uv run --locked uvicorn loreforge.main:app --app-dir src
 ```
 
-Health check:
+Useful endpoints:
 
-```bash
-curl http://127.0.0.1:8000/health
+- `GET /health`
+- `GET /ready`
+- `GET /metrics`
+- `GET /docs`
+
+Run the frontend foundation:
+
+```powershell
+cd frontend
+npm install
+npm run dev
 ```
 
-Expected response:
+Frontend checks:
 
-```json
-{
-  "status": "healthy",
-  "service": "loreforge"
-}
+```powershell
+npm run typecheck
+npm test
+npm run lint
+npm run build
 ```
 
-Interactive OpenAPI docs are available from FastAPI at `/docs` when the development server is running.
+For a fuller handoff path, see [docs/onboarding.md](docs/onboarding.md) and
+[docs/frontend.md](docs/frontend.md).
 
-## Environment Variables and Provider Configuration
+## Configuration
 
-LoreForge now has one centralized typed settings layer in `loreforge.settings`. Runtime configuration is loaded through `load_settings()` and validated at application-container startup. Do not add scattered `os.getenv()` or duplicated parsing logic elsewhere in the codebase.
+Configuration is centralized in `src/loreforge/settings.py` and documented in
+`.env.example`.
 
-The default settings keep LoreForge local-first and zero-cost:
+Copy the template only for local overrides:
 
-- environment: `development`
-- provider selections: `disabled`
-- storage provider: `local`
-- authentication provider: `disabled`
-- metrics recording: enabled in memory
+```powershell
+Copy-Item .env.example .env
+```
 
-Copy `.env.example` to `.env` for local experimentation, then fill only the values you need. `.env` and `.env.*` are ignored by git. Never commit real provider keys, database URLs, service-role keys, JWT secrets, or private deployment values.
+Important defaults:
 
-Environment switching is configuration-driven with `LOREFORGE_ENVIRONMENT`:
+- `LOREFORGE_ENVIRONMENT=development`
+- provider selections are `disabled`
+- `LOREFORGE_DATABASE_URL` is empty
+- `LOREFORGE_AUTH_PROVIDER=disabled`
+- live smoke tests are disabled
 
-- `development` for normal local work
-- `testing` for deterministic test/runtime configuration
-- `production` for deployed runtime settings
+Production mode requires `LOREFORGE_PUBLIC_BASE_URL` and rejects debug logging.
 
-Production mode fails fast unless `LOREFORGE_PUBLIC_BASE_URL` is configured. Provider, storage, and auth secrets are required only when their corresponding provider is explicitly enabled.
+See [docs/configuration.md](docs/configuration.md).
 
-Important provider behavior:
+## Database and Migrations
 
-- Gemini embedding and generation adapters are implemented behind provider protocols and are selected only through typed settings.
-- OpenRouter settings are defined and the existing adapter remains available; it is selected only through typed settings.
-- Local embedding/reranking model names are configurable, and local models still load lazily only when their providers are explicitly constructed.
-- The default `/ask` route still returns `503` until query embedding, reranking, LLM providers, and indexed evidence are all configured. Gemini query and LLM providers alone are not enough if reranking remains disabled.
+Leave `LOREFORGE_DATABASE_URL` empty for in-memory local startup.
 
-Key configuration groups documented in `.env.example`:
+When PostgreSQL is configured:
 
-- application identity and environment
-- API host, port, and future CORS origins
-- logging controls
-- provider selections and provider-specific placeholders
-- PostgreSQL URL, pool sizing, migration controls, and opt-in live database smoke flag
-- local/Supabase storage placeholders
-- Supabase Auth/JWT placeholders
-- observability toggles
-
-## PostgreSQL and Migrations
-
-Leave `LOREFORGE_DATABASE_URL` empty for the default zero-cost in-memory runtime. When a PostgreSQL URL is configured, the application composition root uses SQLAlchemy repositories for catalog entries and indexing-attempt metadata.
-
-Apply migrations before using a fresh database:
-
-```bash
+```powershell
 uv run --locked alembic -c alembic.ini upgrade head
 ```
 
-Set `LOREFORGE_DATABASE_MIGRATIONS_ENABLED=true` only when you intentionally want application startup to run Alembic migrations. Supabase is treated as a PostgreSQL host; LoreForge does not depend on Supabase-specific APIs for Day 34 persistence.
-
-Database health can be checked through the `DatabaseRuntime.check_health()` helper or the opt-in live smoke test. The public `/health` endpoint remains a static application liveness check and does not expose database details. See `docs/postgresql-persistence.md` for the Day 34 persistence boundary and current limitations.
-
-## API Overview
-
-### Health
-
-`GET /health`
-
-Purpose: confirm the FastAPI application is running.
-
-Responses:
-
-- `200` with service health payload.
-
-### Document Upload Boundary
-
-`POST /documents/upload`
-
-Purpose: validate and accept a PDF upload boundary without indexing it.
-
-Request: multipart PDF file.
-
-Responses:
-
-- `201` accepted upload metadata
-- `400` invalid upload payload
-- `413` upload exceeds size limit
-- `415` unsupported media type or invalid PDF
-
-### Admin Catalog
-
-`GET /admin/documents`
-
-Purpose: list catalog entries in insertion order.
-
-Responses:
-
-- `200` ordered document list
-- `503` if application services are unavailable
-
-`GET /admin/documents/{document_id}`
-
-Purpose: fetch one catalog entry.
-
-Responses:
-
-- `200` document metadata
-- `404` document not found
-- `422` invalid UUID
-- `503` if application services are unavailable
-
-`POST /admin/documents`
-
-Purpose: register document metadata before indexing.
-
-Request JSON:
-
-```json
-{
-  "filename": "example.pdf",
-  "page_count": 0,
-  "chunk_count": 0
-}
-```
-
-Responses:
-
-- `201` created catalog entry with `UPLOADED` status
-- `422` validation failure
-- `503` if application services are unavailable
-
-`POST /admin/documents/{document_id}/index`
-
-Purpose: ingest a registered PDF, create chunks, embed chunks, populate shared vector/BM25 indexes, and transition catalog status.
-
-Request: multipart PDF file.
-
-Responses:
-
-- `200` indexed chunk counts
-- `404` document not found
-- `409` lifecycle does not allow indexing or document is already indexed
-- `422` invalid PDF upload
-- `503` indexing provider/runtime unavailable
-
-Lifecycle helper routes:
-
-- `POST /admin/documents/{document_id}/ingesting`
-- `POST /admin/documents/{document_id}/ready`
-- `POST /admin/documents/{document_id}/failed`
-- `POST /admin/documents/{document_id}/deleted`
-
-Purpose: exercise catalog lifecycle transitions through the API.
-
-Responses:
-
-- `200` updated document metadata
-- `404` document not found
-- `409` invalid lifecycle transition
-- `422` validation failure
-
-### AskMe
-
-`POST /ask`
-
-Purpose: answer a user question with a citation-validated grounded answer when the application has configured providers and indexed evidence.
-
-Request JSON:
-
-```json
-{
-  "question": "Which retrieval methods does LoreForge combine?"
-}
-```
-
-Responses:
-
-- `200` answer with source citations
-- `422` blank or invalid question
-- `502` a safely grounded answer could not be produced
-- `503` AskMe is unavailable, including default degraded startup
-
-Default runtime behavior: `/ask` returns `503` until query embedding, reranking, and LLM providers are injected and relevant documents are indexed.
-
-## Indexing Workflow
-
-A configured runtime can prove the backend vertical slice through these steps:
-
-1. Register metadata with `POST /admin/documents`.
-2. Index a PDF with `POST /admin/documents/{document_id}/index`.
-3. The indexing service validates the PDF, parses pages, normalizes text, chunks content, embeds chunks, writes to the shared vector index, writes to the shared BM25 index, and marks the document `READY`.
-4. If indexing fails after ingestion begins, semantic and lexical index writes are rolled back and the catalog entry is marked `FAILED`.
-
-When `LOREFORGE_DATABASE_URL` is unset, catalog and indexing-attempt metadata remain in memory. When it is set and migrations have been applied, catalog metadata and indexing-attempt STARTED/SUCCEEDED/FAILED state are stored in PostgreSQL. The semantic vector and BM25 indexes remain in memory until Day 35.
-
-## AskMe Workflow
-
-When configured, `POST /ask` follows this path:
-
-```text
-question
-  -> query embedding
-  -> semantic retrieval and BM25 retrieval
-  -> Reciprocal Rank Fusion
-  -> reranking
-  -> evidence-context construction
-  -> grounded prompt construction
-  -> provider-independent answer generation
-  -> citation enforcement
-  -> API response
-```
-
-The runtime records safe observability metadata for configured query executions: trace ID, UTC start time, total latency, stage latencies, retrieval/evidence/citation counts, citation validity, provider model, finish reason, and safe failure category. It does not record raw prompts, raw evidence text, answer text, credentials, headers, or provider payloads.
+See [docs/postgresql-persistence.md](docs/postgresql-persistence.md).
 
 ## Testing
 
-Run all tests:
+Run the full deterministic suite:
 
-```bash
+```powershell
 uv run --locked pytest
 ```
 
-The default test suite is offline and deterministic. Provider and integration boundaries use fakes or injected clients/transports; tests must not require live model downloads, Gemini, OpenRouter, PostgreSQL, network access, sleeps, or randomness.
+Run static checks:
 
-An opt-in Gemini smoke test exists at `tests/integration/test_gemini_live_smoke.py`. Run it only when you intentionally want a live provider check and have configured a local ignored `.env` with Gemini settings:
-
-```bash
-LOREFORGE_RUN_LIVE_GEMINI_SMOKE=true uv run --locked pytest tests/integration/test_gemini_live_smoke.py
-```
-
-An opt-in PostgreSQL/Supabase smoke test exists at `tests/integration/test_database_live_smoke.py`. Run it only when you intentionally want a live database check and have configured a local ignored `.env` with `LOREFORGE_DATABASE_URL`:
-
-```bash
-LOREFORGE_RUN_LIVE_DATABASE_SMOKE=true uv run --locked pytest tests/integration/test_database_live_smoke.py
-```
-
-## Linting and Type Checking
-
-```bash
-uv run --locked ruff check .
-uv run --locked ruff format --check .
-uv run --locked mypy src
-```
-
-Whitespace check before handoff:
-
-```bash
-git diff --check
-```
-
-## Verification
-
-Expected local verification pipeline:
-
-```bash
-uv run --locked pytest
+```powershell
 uv run --locked ruff check .
 uv run --locked ruff format --check .
 uv run --locked mypy src
 git diff --check
 ```
 
-## Docker Usage
+Live provider/database smoke tests are opt-in and skipped by default.
 
-There is currently no `Dockerfile`, compose file, or container entrypoint in the repository. Docker reproducibility is a planned future hardening step, not a verified current capability.
+## Evaluation
 
-## CI Readiness
+Passing deterministic quality gate:
 
-There is currently no CI configuration in the repository. A future CI workflow should run the same verification pipeline documented above:
+```powershell
+uv run --locked python -m loreforge.evaluation --dataset tests/fixtures/evaluation/golden_dataset.json --thresholds tests/fixtures/evaluation/thresholds.json --output .tmp/evaluation-golden-report.json --human
+```
 
-- `uv run --locked pytest`
-- `uv run --locked ruff check .`
-- `uv run --locked ruff format --check .`
-- `uv run --locked mypy src`
+Intentional degraded gate:
 
-## Deployment Prerequisites
+```powershell
+uv run --locked python -m loreforge.evaluation --dataset tests/fixtures/evaluation/degraded_dataset.json --thresholds tests/fixtures/evaluation/thresholds.json --output .tmp/evaluation-degraded-report.json --human
+```
 
-Before deploying beyond local development, add and verify:
+Exit codes:
 
-- live provider operational validation with approved credentials
-- secret management outside source control
-- production process management
-- configured PostgreSQL for restart-safe document and indexing metadata
-- authentication and authorization for admin/document endpoints
-- Docker or equivalent reproducible runtime packaging
-- CI verification gates
-- operational logging policy and external metrics/export adapters if needed
+- `0`: pass
+- `1`: quality regression
+- `2`: configuration/setup error
+
+See [docs/evaluation.md](docs/evaluation.md).
+
+## Observability
+
+LoreForge includes:
+
+- `X-Request-ID` correlation
+- request-local observability context
+- structured request logs
+- `/metrics` JSON snapshot
+- HTTP, readiness, retrieval, indexing, and provider-operation metrics
+
+Logs and metrics avoid secrets, prompts, full questions, answers, raw document
+text, vectors, provider payloads, filenames, request IDs as metric labels, user
+IDs as metric labels, and document IDs as metric labels.
+
+See [docs/observability.md](docs/observability.md).
+
+## Deployment
+
+Dockerfile, `.dockerignore`, and Docker Compose configuration are present.
+
+Day 37 Docker implementation is complete, but final Docker image build
+verification remains pending because locked dependency downloads timed out under
+current network conditions. This is documented as a known limitation rather than
+claimed as verified.
+
+See [docs/deployment.md](docs/deployment.md).
+
+## Production Readiness
+
+See [docs/production-readiness-checklist.md](docs/production-readiness-checklist.md)
+for completed, partial, pending, and future items across security, retrieval,
+persistence, observability, evaluation, deployment, testing, and documentation.
+
+## Demo and Interview Guides
+
+- [docs/demo-guide.md](docs/demo-guide.md)
+- [docs/interview-guide.md](docs/interview-guide.md)
+- [docs/final-engineering-audit.md](docs/final-engineering-audit.md)
 
 ## Known Limitations
 
-- Catalog and indexing-attempt metadata are durable only when PostgreSQL is configured and migrations have been applied; otherwise they remain in memory.
-- Default `/ask` is intentionally unavailable without injected providers.
-- Local embedding/reranking providers may download or load model artifacts when used outside the default app.
-- Gemini and OpenRouter exist as adapters but are disabled by default and require explicit credentials/configuration.
-- No authentication or authorization is implemented.
-- Vector index, BM25 index, original PDF bytes, metrics, and query observations remain in memory or request-scoped only.
-- No Docker or CI files are present.
-- Evaluation primitives are deterministic, but benchmark retrieval quality still requires ground-truth evaluation cases.
+- Default `/ask` is unavailable until providers and evidence are configured.
+- Docker build verification remains pending due network dependency-download
+  conditions.
+- No CI workflow is committed yet.
+- Metrics are in-process and reset on restart.
+- No external metrics collector, dashboards, alerts, or distributed tracing.
+- Uploaded PDF bytes are not durably stored.
+- Runtime vector and BM25 indexes are in memory and need a rebuild strategy after
+  restart.
+- Evaluation is deterministic fixture mode, not live provider/database quality
+  evaluation.
+- No OAuth/OIDC, roles, RBAC, or rate limiting.
+- Frontend workflows are shell-level until the authenticated data layer is connected.
+- No Kubernetes or cloud-specific deployment manifests.
+
+## Roadmap
+
+Near term:
+
+- Add CI with pytest, Ruff, mypy, diff check, and evaluation gate.
+- Verify Docker build in a stable network environment.
+- Add focused rebuild/runbook docs for in-memory retrieval state.
+
+Mid term:
+
+- Durable uploaded-file storage.
+- Background indexing workers and retry/idempotency controls.
+- External metrics export and dashboards.
+- Expanded golden evaluation set with human-reviewed cases.
+
+Long term:
+
+- OIDC/JWT enterprise identity provider integration.
+- Durable vector/BM25 retrieval backend or rebuildable retrieval service.
+- Production deployment runbooks and backup/restore procedures.
+- Optional model-assisted evaluation alongside deterministic gates.

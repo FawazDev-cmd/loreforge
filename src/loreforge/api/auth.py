@@ -7,6 +7,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from loreforge.application import ApplicationContainer
 from loreforge.auth import AuthenticatedPrincipal
+from loreforge.observability import set_user_id
 from loreforge.settings import AuthProvider
 
 _APPLICATION_UNAVAILABLE_DETAIL = "Application services are unavailable."
@@ -39,6 +40,8 @@ def get_current_principal(
     principal = container.authenticator.authenticate(credentials.credentials)
     if principal is None:
         raise _unauthorized()
+    request.state.authenticated = True
+    set_user_id(principal.user.user_id)
     return principal
 
 
