@@ -42,17 +42,20 @@ frontend/
 /                             public product entry
 /login                        validated sign-in form shell
 /workspace                    workspace overview
-/workspace/documents          document list shell
-/workspace/documents/upload   upload shell
-/workspace/chat               AskMe shell
-/admin                        admin overview
-/admin/system                 system status shell
-/admin/evaluation             evaluation shell
+/workspace/documents          document list and ingestion status workflow
+/workspace/documents/upload   PDF upload workflow
+/workspace/chat               AskMe question and citation workflow
+/admin                        engineering operations overview
+/admin/system                 health and readiness view
+/admin/metrics                operational metrics view
+/admin/evaluation             offline evaluation posture
 ```
 
-These routes are intentionally lightweight. They reserve the product information
-architecture without inventing data, fake answers, fake documents, or unsupported
-admin workflows.
+Workspace flow:
+
+```text
+Upload Documents -> wait until READY -> ask AskMe -> inspect citations
+```
 
 ## Configuration
 
@@ -100,14 +103,12 @@ npm run build
 
 - configured base URL handling
 - JSON request and response handling
-- future bearer-token header injection
+- bearer-token header injection
 - request timeout support
 - safe `ApiClientError` objects with status and request ID
 
 It does not create sample data, call live providers, or weaken backend
 authorization.
-
-
 
 ## Authentication
 
@@ -139,8 +140,6 @@ Frontend route protection:
 
 The frontend never renders the full API key after entry and never logs
 authorization headers.
-
-
 
 ## Documents Workflow
 
@@ -174,14 +173,139 @@ Supported upload constraints:
 - `application/pdf`
 - 10 MB maximum
 
-Successful upload returns `status: "accepted"`. The frontend shows acceptance
-feedback and invalidates the document list query, but it does not fake catalog
-registration or ingestion completion. Current ingestion state remains whatever
-the backend returns from the document list endpoint.
+Successful upload returns `status: "accepted"`. The frontend shows an
+accepted-for-ingestion message, invalidates the document list query, and offers a
+direct link back to the document list. Acceptance is not completion: the browser
+never claims the document is READY until the backend document list reports READY.
+
+The document list polls automatically about every 4.5 seconds while at least one
+document is in an active state:
+
+```text
+UPLOADED
+INGESTING
+```
+
+Polling stops when every returned document is terminal:
+
+```text
+READY
+FAILED
+DELETED
+```
+
+Manual refresh remains available.
+
+## Query / AskMe Workflow
+
+The workspace chat route integrates the existing authenticated AskMe endpoint:
+
+```text
+POST /ask
+```
+
+Request body:
+
+```json
+{"question":"What does the document say about refunds?"}
+```
+
+Successful responses include:
+
+- `request_id`
+- original `question`
+- grounded `answer`
+- ordered `citations`
+
+Citation records expose the backend transport contract exactly:
+
+- `citation_id`
+- `document_id`
+- `filename`
+- `page_number`
+- `chunk_id`
+
+The frontend does not present a selected-document control because the current
+backend `/ask` contract accepts only the question text. AskMe is described
+truthfully as collection-wide retrieval across READY indexed documents owned by
+the authenticated user. Documents still marked UPLOADED or INGESTING are not
+presented as available for retrieval.
+
+AskMe states:
+
+- No uploaded documents: explain that a PDF must be uploaded first.
+- No READY documents: explain that indexing is still running or no document is
+  ready for retrieval.
+- READY documents exist: enable the question form and show READY document count
+  and concise filenames.
+
+AskMe error handling:
+
+- `401` clears the frontend session and returns the user to authentication.
+- `422` displays validation guidance.
+- `502` displays an insufficient-evidence state.
+- `503` displays the degraded AskMe availability state.
+- Other network or server failures are shown as safe generic errors.
+
+The citation panel is expandable. The current backend response does not include
+evidence excerpts, relevance scores, timestamps, or source-viewer URLs, so the
+expanded panel shows citation metadata and clearly states that excerpt text is
+not available yet. The frontend does not simulate streaming, fabricate evidence,
+or create sample answers.
+
+
+## Engineering Operations Panel
+
+The `/admin` frontend surface is presented as Engineering Operations, not a
+business administration console. It is intended to demonstrate production
+readiness and observability without exposing unsupported controls.
+
+Supported backend integrations:
+
+```text
+GET /health
+GET /ready
+GET /metrics
+```
+
+System view:
+
+- API health from `/health`
+- readiness from `/ready`
+- safe placeholders for application version, configured provider, granular
+  database readiness, and retrieval readiness when those fields are not exposed
+  by the backend
+
+Metrics view:
+
+- authenticated `/metrics` JSON snapshot
+- aggregate counter series
+- aggregate duration series
+- query trace count
+
+Evaluation view:
+
+- honest placeholder because no HTTP evaluation summary endpoint is currently
+  exposed
+- notes that deterministic evaluation and regression gates run through backend
+  repository tooling
+
+Unsupported operations are intentionally absent:
+
+- users
+- billing
+- roles
+- organizations
+- permissions
+- provider configuration
+- destructive controls
+
+The frontend never displays API keys, database URLs, Gemini credentials,
+environment variables, internal filesystem paths, or other secrets.
 
 ## Current Limitations
 
-- AskMe, system, metrics, and evaluation views are shells.
+- Evidence excerpts, relevance scores, timestamps, and document-scoped AskMe filtering are not exposed by the backend response yet.
 - No frontend deployment artifact is connected to backend Docker packaging yet.
 
-The next milestone is Frontend Day 4: Question, Answer, and Citation Experience.
+Frontend Day 7 completed the recruiter-focused polish pass and frontend freeze. The interface now emphasizes the five-minute demo path, consistent Workspace/Engineering language, honest backend limitations, and responsive accessibility polish.\n\nThe next milestone is Docker Verification and Production Validation.

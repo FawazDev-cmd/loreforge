@@ -1,8 +1,8 @@
 import { Link, Outlet } from "react-router-dom";
 
+import { routes } from "../../app/router/routes";
 import { NavigationLink } from "../../components/navigation/NavigationLink";
 import { AuthControls } from "../../features/auth/AuthControls";
-import { routes } from "../../app/router/routes";
 
 export function WorkspaceLayout() {
   return (
@@ -16,7 +16,7 @@ export function WorkspaceLayout() {
         </Link>
         <nav aria-label="Account navigation" className="nav-row">
           <NavigationLink to={routes.home}>Product</NavigationLink>
-          <NavigationLink to={routes.admin}>Admin</NavigationLink>
+          <NavigationLink to={routes.admin}>Engineering</NavigationLink>
         </nav>
         <AuthControls />
       </header>

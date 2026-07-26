@@ -1,5 +1,7 @@
 import { type FormEvent, useState } from "react";
+import { Link } from "react-router-dom";
 
+import { routes } from "../../app/router/routes";
 import { ErrorState } from "../../components/feedback/ErrorState";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
@@ -54,11 +56,17 @@ export function UploadForm() {
         </form>
       </Card>
       {upload.isSuccess && upload.data ? (
-        <Card>
-          <h2>Upload accepted</h2>
-          <p className="muted">
-            {upload.data.filename} was accepted by the upload boundary with status {upload.data.status}.
-          </p>
+        <Card className="stack">
+          <div>
+            <h2>Upload accepted for ingestion</h2>
+            <p className="muted">
+              {upload.data.filename} was accepted by LoreForge. Acceptance is not completion; the document becomes
+              available to AskMe only after the document list reports READY.
+            </p>
+          </div>
+          <Button as={Link} to={routes.workspaceDocuments} variant="secondary">
+            View documents
+          </Button>
         </Card>
       ) : null}
       {upload.errorMessage ? (
@@ -67,4 +75,3 @@ export function UploadForm() {
     </div>
   );
 }
-

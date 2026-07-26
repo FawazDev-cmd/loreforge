@@ -7,5 +7,6 @@ export const routes = {
   workspaceChat: "/workspace/chat",
   admin: "/admin",
   adminSystem: "/admin/system",
+  adminMetrics: "/admin/metrics",
   adminEvaluation: "/admin/evaluation",
 } as const;

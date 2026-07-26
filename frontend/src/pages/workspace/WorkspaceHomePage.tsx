@@ -12,33 +12,41 @@ export function WorkspaceHomePage() {
     <section className="stack">
       <PageHeader
         title="Workspace"
-        description="A foundation shell for user-owned document ingestion and grounded question answering."
+        description="The MVP workflow is linear: upload PDFs, wait for READY, ask AskMe, then inspect the citations behind the answer."
         actions={
-          <Button as={Link} to={routes.workspaceUpload}>
-            Upload document
-          </Button>
+          <>
+            <Button as={Link} to={routes.workspaceUpload}>
+              Upload document
+            </Button>
+            <Button as={Link} to={routes.workspaceChat} variant="secondary">
+              AskMe
+            </Button>
+          </>
         }
       />
       <div className="dashboard-grid">
         <Card className="metric">
-          <span className="muted">Documents</span>
-          <span className="metric__value">Pending API wiring</span>
-          <Badge tone="neutral">Frontend Day 3</Badge>
+          <span className="muted">Step 1</span>
+          <span className="metric__value">Upload PDFs</span>
+          <p className="muted">Accepted uploads are tracked through UPLOADED, INGESTING, and READY states.</p>
+          <Badge tone="info">Ingestion tracked</Badge>
         </Card>
         <Card className="metric">
-          <span className="muted">AskMe</span>
-          <span className="metric__value">Ready shell</span>
-          <Badge tone="info">Frontend Day 4</Badge>
+          <span className="muted">Step 2</span>
+          <span className="metric__value">AskMe</span>
+          <p className="muted">Ask questions across all READY indexed documents owned by the authenticated user.</p>
+          <Badge tone="success">READY docs only</Badge>
         </Card>
         <Card className="metric">
-          <span className="muted">Authorization</span>
-          <span className="metric__value">Backend-owned</span>
-          <Badge tone="success">Server enforced</Badge>
+          <span className="muted">Step 3</span>
+          <span className="metric__value">Inspect citations</span>
+          <p className="muted">Every answer includes source metadata so grounding is visible instead of implied.</p>
+          <Badge tone="neutral">Evidence metadata</Badge>
         </Card>
       </div>
       <EmptyState
-        title="No workspace data loaded"
-        message="Live document lists and answer history are intentionally deferred until the authenticated data layer is connected."
+        title="Recommended demo path"
+        message="Upload Documents -> wait until READY -> ask AskMe -> inspect citations -> open Engineering Operations."
       />
     </section>
   );

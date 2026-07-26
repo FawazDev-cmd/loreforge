@@ -1,14 +1,14 @@
 import { QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createQueryClient } from "../../app/providers/queryClient";
-import { AuthProvider } from "../auth/AuthProvider";
-import { authStorageKey } from "../auth/storage";
 import { WorkspaceDocumentsPage } from "../../pages/workspace/WorkspaceDocumentsPage";
 import { WorkspaceUploadPage } from "../../pages/workspace/WorkspaceUploadPage";
+import { AuthProvider } from "../auth/AuthProvider";
+import { authStorageKey } from "../auth/storage";
 import { uploadDocument } from "./api";
 
 const authSession = JSON.stringify({
@@ -42,12 +42,16 @@ describe("documents workspace", () => {
     window.sessionStorage.clear();
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("renders the loading state while documents load", () => {
     const fetchImpl = vi.fn<typeof fetch>().mockReturnValue(new Promise<Response>(() => undefined));
 
     renderWithAuth(<WorkspaceDocumentsPage />, { fetchImpl });
 
-    expect(screen.getByText("Loading documents.")).toBeInTheDocument();
+    expect(screen.getByText("Loading document status.")).toBeInTheDocument();
   });
 
   it("renders an empty documents state", async () => {
@@ -78,8 +82,87 @@ describe("documents workspace", () => {
 
     expect(await screen.findByText("policy.pdf")).toBeInTheDocument();
     expect(screen.getByText("INGESTING")).toBeInTheDocument();
+    expect(screen.getByText(/refreshes automatically/)).toBeInTheDocument();
     expect(screen.getByText("2")).toBeInTheDocument();
     expect(screen.getByText("4")).toBeInTheDocument();
+  });
+
+  it("polls while active ingestion states are present", async () => {
+    vi.useFakeTimers();
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        jsonResponse({
+          documents: [
+            {
+              chunk_count: 0,
+              document_id: "doc-active",
+              filename: "indexing.pdf",
+              page_count: 1,
+              status: "INGESTING",
+              uploaded_at: "2026-01-01T00:00:00Z",
+            },
+          ],
+        }),
+      )
+      .mockResolvedValue(
+        jsonResponse({
+          documents: [
+            {
+              chunk_count: 2,
+              document_id: "doc-active",
+              filename: "indexing.pdf",
+              page_count: 1,
+              status: "READY",
+              uploaded_at: "2026-01-01T00:00:00Z",
+            },
+          ],
+        }),
+      );
+
+    renderWithAuth(<WorkspaceDocumentsPage />, { fetchImpl });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    expect(screen.getByText("INGESTING")).toBeInTheDocument();
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(4500);
+    });
+
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not poll when all document states are terminal", async () => {
+    vi.useFakeTimers();
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
+      jsonResponse({
+        documents: [
+          {
+            chunk_count: 2,
+            document_id: "doc-ready",
+            filename: "ready.pdf",
+            page_count: 1,
+            status: "READY",
+            uploaded_at: "2026-01-01T00:00:00Z",
+          },
+        ],
+      }),
+    );
+
+    renderWithAuth(<WorkspaceDocumentsPage />, { fetchImpl });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    expect(screen.getByText("READY")).toBeInTheDocument();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000);
+    });
+
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 
   it("renders an API failure state", async () => {
@@ -103,7 +186,7 @@ describe("documents workspace", () => {
     expect(screen.getByText("Only .pdf files are supported.")).toBeInTheDocument();
   });
 
-  it("uploads a PDF, reports success, and refreshes document queries", async () => {
+  it("uploads a PDF, reports acceptance for ingestion, and refreshes document queries", async () => {
     const queryClient = createQueryClient();
     const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
     const xhr = new FakeUploadRequest({
@@ -124,7 +207,9 @@ describe("documents workspace", () => {
     await userEvent.upload(input, new File(["%PDF-1.7 content"], "handbook.pdf", { type: "application/pdf" }));
     await userEvent.click(screen.getByRole("button", { name: "Upload PDF" }));
 
-    expect(await screen.findByRole("heading", { name: "Upload accepted" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Upload accepted for ingestion" })).toBeInTheDocument();
+    expect(screen.getAllByText(/Acceptance is not completion/).length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByRole("link", { name: "View documents" }).every((link) => link.getAttribute("href") === "/workspace/documents")).toBe(true);
     expect(invalidateSpy).toHaveBeenCalled();
   });
 
@@ -219,4 +304,3 @@ class FakeUploadRequest {
     this.headers[name] = value;
   }
 }
-

@@ -11,35 +11,42 @@ export function PublicHomePage() {
     <section className="stack">
       <PageHeader
         title="LoreForge"
-        description="A grounded RAG product workspace for private document collections, citation-aware answers, and operator-visible system health."
+        description="A private-document AskMe system: upload PDFs, wait for indexing, ask grounded questions, and inspect the citations behind every answer."
         actions={
           <>
             <Button as={Link} to={routes.workspace}>
               Open workspace
             </Button>
             <Button as={Link} to={routes.admin} variant="secondary">
-              Admin panel
+              Engineering operations
             </Button>
           </>
         }
       />
       <div className="dashboard-grid">
-        <Card>
-          <h2>Workspace</h2>
-          <p className="muted">Owned documents, upload flow, and AskMe routes are separated from operator tools.</p>
-          <Badge tone="info">User surface</Badge>
+        <Card className="metric">
+          <span className="muted">1. Build the collection</span>
+          <span className="metric__value">Upload PDFs</span>
+          <p className="muted">LoreForge accepts documents, tracks ingestion, and shows when they become READY for retrieval.</p>
+          <Badge tone="info">Document workflow</Badge>
         </Card>
-        <Card>
-          <h2>Admin</h2>
-          <p className="muted">Health, readiness, metrics, and evaluation routes have their own navigation shell.</p>
-          <Badge tone="warning">Operator surface</Badge>
+        <Card className="metric">
+          <span className="muted">2. Ask grounded questions</span>
+          <span className="metric__value">AskMe answers</span>
+          <p className="muted">Answers are generated only from indexed evidence and returned with citation metadata.</p>
+          <Badge tone="success">Citation aware</Badge>
         </Card>
-        <Card>
-          <h2>Backend Boundary</h2>
-          <p className="muted">Authorization remains backend-enforced; the frontend only presents product flows.</p>
-          <Badge tone="success">Clean contracts</Badge>
+        <Card className="metric">
+          <span className="muted">3. Inspect operations</span>
+          <span className="metric__value">Engineering view</span>
+          <p className="muted">Health, readiness, metrics, and offline evaluation posture are separated from the user workflow.</p>
+          <Badge tone="neutral">Production minded</Badge>
         </Card>
       </div>
+      <Card className="journey-card">
+        <h2>Demo path</h2>
+        <p>Sign in, upload a PDF, monitor ingestion, ask AskMe, inspect citations, then review Engineering Operations.</p>
+      </Card>
     </section>
   );
 }

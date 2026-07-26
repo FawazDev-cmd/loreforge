@@ -49,7 +49,7 @@ describe("application routes", () => {
   it("renders admin routes in the admin layout", () => {
     renderRoute("/admin/evaluation", true);
 
-    expect(screen.getByRole("link", { name: "LoreForge Admin" })).toHaveAttribute("href", "/admin");
+    expect(screen.getByRole("link", { name: "LoreForge Engineering" })).toHaveAttribute("href", "/admin");
     expect(screen.getByRole("heading", { level: 1, name: "Evaluation" })).toBeInTheDocument();
   });
 

@@ -1,16 +1,18 @@
 import { EmptyState } from "../../components/feedback/EmptyState";
 import { PageHeader } from "../../components/ui/PageHeader";
+import { OperationalStatusCard } from "../../features/operations/OperationalStatusCard";
 
 export function AdminEvaluationPage() {
   return (
-    <section>
+    <section className="stack">
       <PageHeader
         title="Evaluation"
-        description="This route is reserved for deterministic evaluation summaries and regression-gate status."
+        description="Deterministic retrieval and grounded-answer evaluation status. LoreForge currently exposes evaluation through offline repository tooling, not an HTTP summary endpoint."
       />
+      <OperationalStatusCard detail="No evaluation summary endpoint is exposed by the backend." status="unknown" title="Latest run" />
       <EmptyState
-        title="No evaluation report loaded"
-        message="Evaluation data remains backend-owned until the admin API integration milestone."
+        title="Evaluation runs offline"
+        message="Regression gates and quality reports are implemented in the backend repository tooling. The frontend does not fabricate pass/fail results without a supported API."
       />
     </section>
   );

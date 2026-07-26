@@ -9,6 +9,8 @@ from uuid import UUID, uuid4
 
 from fastapi import Depends, FastAPI, Request, Response, status
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
+
 
 from loreforge.api.admin import router as admin_router
 from loreforge.api.askme import router as askme_router
@@ -58,6 +60,16 @@ def create_app(
         version=runtime_settings.application.api_version,
         lifespan=lifespan,
     )
+
+    if runtime_settings.api.cors_allowed_origins:
+        application.add_middleware(
+            CORSMiddleware,
+            allow_origins=list(runtime_settings.api.cors_allowed_origins),
+            allow_credentials=False,
+            allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+            allow_headers=["Authorization", "Content-Type"],
+        )
+
     application.include_router(admin_router)
     application.include_router(askme_router)
     application.include_router(documents_router)

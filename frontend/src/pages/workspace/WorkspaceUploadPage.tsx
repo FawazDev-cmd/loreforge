@@ -12,18 +12,18 @@ export function WorkspaceUploadPage() {
       <div>
         <PageHeader
           title="Upload"
-          description="Upload one PDF to the document boundary. LoreForge accepts the file and reports ingestion status through the document list."
+          description="Upload one PDF at a time. Acceptance starts ingestion; READY status is reported later on the document list."
           actions={
             <Button as={Link} to={routes.workspaceDocuments} variant="secondary">
-              Documents
+              View documents
             </Button>
           }
         />
         <UploadForm />
       </div>
       <EmptyState
-        title="Ingestion status remains backend-owned"
-        message="A successful upload is accepted by the upload boundary. The document list refreshes after upload, but completion is never faked in the browser."
+        title="Acceptance is not completion"
+        message="A successful upload means LoreForge accepted the file for ingestion. The browser waits for the backend to report READY before AskMe can retrieve from it."
       />
     </section>
   );

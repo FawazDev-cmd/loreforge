@@ -17,6 +17,7 @@ dependencies = [
   "python-multipart>=0.0.32",
   "sentence-transformers>=5.6.0",
   "sqlalchemy>=2.0.51",
+  "torch>=2.13.0",
   "uvicorn>=0.32.0",
 ]
 
@@ -30,6 +31,10 @@ dev = [
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/loreforge"]
+
+[[tool.uv.index]]
+name = "pytorch"
+url = "https://download.pytorch.org/whl/cpu"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -60,3 +65,6 @@ warn_unused_configs = true
 warn_redundant_casts = true
 warn_unused_ignores = true
 warn_unreachable = true
+
+[tool.uv.sources]
+torch = { index = "pytorch" }

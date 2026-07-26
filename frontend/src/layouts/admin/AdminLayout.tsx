@@ -1,8 +1,8 @@
 import { Link, Outlet } from "react-router-dom";
 
+import { routes } from "../../app/router/routes";
 import { NavigationLink } from "../../components/navigation/NavigationLink";
 import { AuthControls } from "../../features/auth/AuthControls";
-import { routes } from "../../app/router/routes";
 
 export function AdminLayout() {
   return (
@@ -12,7 +12,7 @@ export function AdminLayout() {
           <span className="brand__mark" aria-hidden="true">
             L
           </span>
-          <span>LoreForge Admin</span>
+          <span>LoreForge Engineering</span>
         </Link>
         <nav aria-label="Surface navigation" className="nav-row">
           <NavigationLink to={routes.workspace}>Workspace</NavigationLink>
@@ -22,11 +22,12 @@ export function AdminLayout() {
       </header>
       <div className="layout-grid">
         <aside className="sidebar">
-          <nav aria-label="Admin navigation" className="nav-stack">
+          <nav aria-label="Engineering navigation" className="nav-stack">
             <NavigationLink end to={routes.admin}>
-              Overview
+              Operations
             </NavigationLink>
             <NavigationLink to={routes.adminSystem}>System</NavigationLink>
+            <NavigationLink to={routes.adminMetrics}>Metrics</NavigationLink>
             <NavigationLink to={routes.adminEvaluation}>Evaluation</NavigationLink>
           </nav>
         </aside>

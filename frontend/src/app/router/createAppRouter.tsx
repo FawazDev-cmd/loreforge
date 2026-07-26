@@ -5,6 +5,7 @@ import { AdminLayout } from "../../layouts/admin/AdminLayout";
 import { PublicLayout } from "../../layouts/public/PublicLayout";
 import { WorkspaceLayout } from "../../layouts/workspace/WorkspaceLayout";
 import { AdminEvaluationPage } from "../../pages/admin/AdminEvaluationPage";
+import { AdminMetricsPage } from "../../pages/admin/AdminMetricsPage";
 import { AdminOverviewPage } from "../../pages/admin/AdminOverviewPage";
 import { AdminSystemPage } from "../../pages/admin/AdminSystemPage";
 import { LoginPage } from "../../pages/public/LoginPage";
@@ -49,6 +50,7 @@ export const appRoutes: RouteObject[] = [
     children: [
       { index: true, element: <AdminOverviewPage /> },
       { path: "system", element: <AdminSystemPage /> },
+      { path: "metrics", element: <AdminMetricsPage /> },
       { path: "evaluation", element: <AdminEvaluationPage /> },
     ],
   },

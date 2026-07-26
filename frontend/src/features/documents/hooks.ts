@@ -5,6 +5,7 @@ import { ApiClientError, UnauthorizedApiError } from "../../api/client";
 import { useAuth } from "../auth/useAuth";
 import {
   documentsQueryKey,
+  hasActiveDocuments,
   listDocuments,
   uploadDocument,
   type DocumentUploadResponse,
@@ -16,6 +17,8 @@ export function useDocumentsQuery() {
   return useQuery({
     queryFn: () => listDocuments(apiClient),
     queryKey: documentsQueryKey,
+    refetchInterval: (query) => (hasActiveDocuments(query.state.data) ? 4500 : false),
+    refetchIntervalInBackground: false,
     retry: false,
   });
 }
@@ -88,4 +91,3 @@ export function documentUploadErrorMessage(error: unknown): string {
 export type DocumentUploadMutationResult = ReturnType<typeof useDocumentUpload> & {
   data: DocumentUploadResponse | undefined;
 };
-

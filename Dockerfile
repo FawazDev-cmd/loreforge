@@ -15,6 +15,7 @@ COPY src ./src
 COPY alembic.ini ./alembic.ini
 COPY migrations ./migrations
 
+ENV UV_HTTP_TIMEOUT=300
 RUN uv sync --locked --no-dev
 
 

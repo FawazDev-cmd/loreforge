@@ -44,7 +44,7 @@ function renderAuthRoutes({
               path="/admin"
               element={
                 <ProtectedRoute>
-                  <h1>Admin</h1>
+                  <h1>Engineering</h1>
                 </ProtectedRoute>
               }
             />
@@ -181,7 +181,7 @@ describe("authentication integration", () => {
 
     renderAuthRoutes({ initialPath: "/admin" });
 
-    expect(await screen.findByRole("heading", { level: 1, name: "Admin" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 1, name: "Engineering" })).toBeInTheDocument();
   });
 });
 

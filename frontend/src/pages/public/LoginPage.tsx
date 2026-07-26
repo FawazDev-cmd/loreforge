@@ -49,10 +49,10 @@ export function LoginPage() {
     <section className="stack">
       <PageHeader
         title="Sign in"
-        description="Enter a LoreForge bearer API key. The frontend verifies it against the existing backend contract before opening protected routes."
+        description="Use a backend-issued bearer API key to open the protected demo workspace and engineering views. The browser stores it only for this session."
         actions={
           <Button as={Link} to={routes.home} variant="secondary">
-            Product
+            Product overview
           </Button>
         }
       />
@@ -61,19 +61,20 @@ export function LoginPage() {
           <Input
             autoComplete="username"
             error={errors.label?.message}
+            helpText="A local label for the session, such as Demo Operator."
             label="Workspace label"
             {...register("label")}
           />
           <Input
             autoComplete="current-password"
             error={errors.apiKey?.message}
-            helpText="Use the backend-issued bearer token when authentication is configured."
+            helpText="Use the configured LoreForge bearer token. The full key is never shown after entry."
             label="API key"
             type="password"
             {...register("apiKey")}
           />
           <Button disabled={!isValid || isSubmitting} type="submit">
-            {isSubmitting ? "Checking" : "Continue"}
+            {isSubmitting ? "Checking access" : "Continue"}
           </Button>
         </form>
       </Card>
