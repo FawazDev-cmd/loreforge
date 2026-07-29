@@ -4,6 +4,7 @@ from math import inf, nan
 
 import pytest
 
+from loreforge.gemini_retry import GeminiRetryPolicy
 from loreforge.generation import (
     GeminiGenerationConfig,
     GeminiGenerationError,
@@ -60,6 +61,39 @@ class FailingModels:
 
 class FailingClient:
     models = FailingModels()
+
+
+class StatusError(RuntimeError):
+    def __init__(self, status_code: int) -> None:
+        super().__init__("provider failure")
+        self.status_code = status_code
+
+
+class TimeoutProviderError(TimeoutError):
+    pass
+
+
+class FlakyModels:
+    def __init__(self, failures: tuple[Exception, ...]) -> None:
+        self.failures = list(failures)
+        self.calls: list[dict[str, object]] = []
+
+    def generate_content(
+        self,
+        *,
+        model: str,
+        contents: str,
+        config: object,
+    ) -> object:
+        self.calls.append({"model": model, "contents": contents, "config": config})
+        if self.failures:
+            raise self.failures.pop(0)
+        return FakeResponse()
+
+
+class FlakyClient:
+    def __init__(self, failures: tuple[Exception, ...]) -> None:
+        self.models = FlakyModels(failures)
 
 
 def test_gemini_generation_config_accepts_valid_construction() -> None:
@@ -202,3 +236,87 @@ def test_gemini_generation_provider_hides_raw_failure_details() -> None:
 
     assert str(exc_info.value) == "gemini generation request failed"
     assert "secret-key" not in str(exc_info.value)
+
+
+def test_gemini_generation_retries_503() -> None:
+    client = FlakyClient((StatusError(503),))
+    delays: list[float] = []
+    provider = _retrying_provider(client, delays)
+
+    response = provider.generate(
+        GenerationRequest(system_prompt="System", user_prompt="User")
+    )
+
+    assert response.text == "Grounded answer [S1]."
+    assert len(client.models.calls) == 2
+    assert delays == [0.5]
+
+
+def test_gemini_generation_retries_429() -> None:
+    client = FlakyClient((StatusError(429),))
+    delays: list[float] = []
+    provider = _retrying_provider(client, delays)
+
+    provider.generate(GenerationRequest(system_prompt="System", user_prompt="User"))
+
+    assert len(client.models.calls) == 2
+    assert delays == [0.5]
+
+
+def test_gemini_generation_retries_timeout() -> None:
+    client = FlakyClient((TimeoutProviderError("temporary timeout"),))
+    delays: list[float] = []
+    provider = _retrying_provider(client, delays)
+
+    provider.generate(GenerationRequest(system_prompt="System", user_prompt="User"))
+
+    assert len(client.models.calls) == 2
+    assert delays == [0.5]
+
+
+@pytest.mark.parametrize("status_code", [400, 401, 403])
+def test_gemini_generation_does_not_retry_permanent_failures(status_code: int) -> None:
+    client = FlakyClient((StatusError(status_code),))
+    delays: list[float] = []
+    provider = _retrying_provider(client, delays)
+
+    with pytest.raises(GeminiGenerationError):
+        provider.generate(GenerationRequest(system_prompt="System", user_prompt="User"))
+
+    assert len(client.models.calls) == 1
+    assert delays == []
+
+
+def test_gemini_generation_retries_stop_after_max_attempts() -> None:
+    client = FlakyClient((StatusError(503), StatusError(503), StatusError(503)))
+    delays: list[float] = []
+    provider = _retrying_provider(client, delays)
+
+    with pytest.raises(GeminiGenerationError):
+        provider.generate(GenerationRequest(system_prompt="System", user_prompt="User"))
+
+    assert len(client.models.calls) == 3
+    assert delays == [0.5, 1.0]
+
+
+def test_gemini_generation_successful_retry_returns_immediately() -> None:
+    client = FlakyClient((StatusError(503),))
+    delays: list[float] = []
+    provider = _retrying_provider(client, delays)
+
+    provider.generate(GenerationRequest(system_prompt="System", user_prompt="User"))
+    provider.generate(GenerationRequest(system_prompt="System", user_prompt="User"))
+
+    assert len(client.models.calls) == 3
+    assert delays == [0.5]
+
+
+def _retrying_provider(client: FlakyClient, delays: list[float]) -> GeminiLLMProvider:
+    return GeminiLLMProvider(
+        GeminiGenerationConfig(api_key="key", model="model"),
+        client=client,
+        _retry_policy=GeminiRetryPolicy(
+            sleep=delays.append,
+            jitter=lambda _base_delay: 0.0,
+        ),
+    )

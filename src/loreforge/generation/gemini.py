@@ -10,6 +10,7 @@ from math import isfinite
 from time import perf_counter
 from typing import Any, Protocol, cast
 
+from loreforge.gemini_retry import GeminiRetryPolicy, call_with_gemini_retries
 from loreforge.generation.models import GenerationRequest, GenerationResponse
 
 _logger = logging.getLogger(__name__)
@@ -79,9 +80,11 @@ class GeminiLLMProvider:
         self,
         config: GeminiGenerationConfig,
         client: _GeminiClient | None = None,
+        _retry_policy: GeminiRetryPolicy | None = None,
     ) -> None:
         self._config = config
         self._client = client
+        self._retry_policy = _retry_policy or GeminiRetryPolicy()
 
     def generate(self, request: GenerationRequest) -> GenerationResponse:
         """Generate raw text for one provider-independent generation request."""
@@ -103,10 +106,14 @@ class GeminiLLMProvider:
         )
         started_at = perf_counter()
         try:
-            response = self._get_client().models.generate_content(
-                model=self._config.model,
-                contents=request.user_prompt,
-                config=config,
+            response = call_with_gemini_retries(
+                lambda: self._get_client().models.generate_content(
+                    model=self._config.model,
+                    contents=request.user_prompt,
+                    config=config,
+                ),
+                operation_name="generate_content",
+                policy=self._retry_policy,
             )
         except GeminiGenerationError:
             raise

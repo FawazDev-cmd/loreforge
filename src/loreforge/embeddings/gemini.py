@@ -16,6 +16,7 @@ from loreforge.embeddings.models import (
     EmbeddingResult,
     EmbeddingVector,
 )
+from loreforge.gemini_retry import GeminiRetryPolicy, call_with_gemini_retries
 
 _logger = logging.getLogger(__name__)
 
@@ -87,9 +88,11 @@ class GeminiEmbeddingProvider:
         self,
         config: GeminiEmbeddingConfig,
         client: _GeminiClient | None = None,
+        _retry_policy: GeminiRetryPolicy | None = None,
     ) -> None:
         self._config = config
         self._client = client
+        self._retry_policy = _retry_policy or GeminiRetryPolicy()
 
     def embed(self, requests: tuple[EmbeddingRequest, ...]) -> EmbeddingResult:
         """Embed ordered document text requests."""
@@ -138,10 +141,14 @@ class GeminiEmbeddingProvider:
         )
         started_at = perf_counter()
         try:
-            response = self._get_client().models.embed_content(
-                model=self._config.model,
-                contents=contents,
-                config=config,
+            response = call_with_gemini_retries(
+                lambda: self._get_client().models.embed_content(
+                    model=self._config.model,
+                    contents=contents,
+                    config=config,
+                ),
+                operation_name="embed_content",
+                policy=self._retry_policy,
             )
         except GeminiEmbeddingError:
             raise
