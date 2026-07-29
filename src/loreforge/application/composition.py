@@ -1,5 +1,6 @@
 """Application-level service construction."""
 
+import logging
 from collections.abc import Callable
 from dataclasses import dataclass
 
@@ -26,6 +27,7 @@ from loreforge.database import (
     SqlAlchemyChunkRepository,
     SqlAlchemyEmbeddingRepository,
     SqlAlchemyIndexingStateRepository,
+    SqlAlchemyRetrievalRepository,
     SqlAlchemyUserRepository,
     create_database_runtime,
 )
@@ -46,7 +48,11 @@ from loreforge.observability import (
 from loreforge.query import ProductionGroundedQueryEngine
 from loreforge.reranking import RerankerProvider
 from loreforge.retrieval.bm25 import InMemoryBM25Index
-from loreforge.retrieval.repository import ChunkRepository, EmbeddingRepository
+from loreforge.retrieval.repository import (
+    ChunkRepository,
+    EmbeddingRepository,
+    RetrievalRepository,
+)
 from loreforge.settings import (
     AuthProvider,
     LoreForgeSettings,
@@ -56,7 +62,31 @@ from loreforge.settings import (
 )
 from loreforge.vector_index import InMemoryVectorIndex
 
+_logger = logging.getLogger(__name__)
+
 _UNAVAILABLE_DETAIL = "AskMe is temporarily unavailable."
+
+
+def _create_retrieval_repository(
+    *,
+    chunk_repository: ChunkRepository | None,
+    embedding_repository: EmbeddingRepository | None,
+) -> RetrievalRepository | None:
+    if chunk_repository is None or embedding_repository is None:
+        return None
+
+    if not isinstance(chunk_repository, SqlAlchemyChunkRepository):
+        msg = "durable retrieval requires SqlAlchemyChunkRepository"
+        raise TypeError(msg)
+
+    if not isinstance(embedding_repository, SqlAlchemyEmbeddingRepository):
+        msg = "durable retrieval requires SqlAlchemyEmbeddingRepository"
+        raise TypeError(msg)
+
+    return SqlAlchemyRetrievalRepository(
+        chunk_repository=chunk_repository,
+        embedding_repository=embedding_repository,
+    )
 
 
 class UnavailableGroundedQueryEngine:
@@ -97,6 +127,11 @@ def create_application_container(
     indexing_state_repository = _create_indexing_state_repository(database)
     chunk_repository = _create_chunk_repository(database)
     embedding_repository = _create_embedding_repository(database)
+    retrieval_repository = _create_retrieval_repository(
+        chunk_repository=chunk_repository,
+        embedding_repository=embedding_repository,
+    )
+
     user_repository = _create_user_repository(database)
     authenticator = _create_authenticator(runtime_settings, user_repository)
     catalog_service = CatalogService(catalog_repository)
@@ -104,6 +139,7 @@ def create_application_container(
     lexical_index = InMemoryBM25Index()
     metrics_recorder = InMemoryMetricsRecorder()
     operational_metrics = InMemoryOperationalMetricsRecorder()
+    reranker = _create_reranker_provider(factories, runtime_settings)
     document_indexing_service = _create_document_indexing_service(
         catalog_service=catalog_service,
         vector_index=vector_index,
@@ -116,8 +152,8 @@ def create_application_container(
         settings=runtime_settings,
     )
     query_engine = _create_query_engine(
-        vector_index=vector_index,
-        lexical_index=lexical_index,
+        retrieval_repository=retrieval_repository,
+        reranker=reranker,
         factories=factories,
         metrics_recorder=metrics_recorder,
         operational_metrics=operational_metrics,
@@ -135,6 +171,7 @@ def create_application_container(
         lexical_index=lexical_index,
         query_engine=query_engine,
         metrics_recorder=metrics_recorder,
+        reranker=reranker,
         operational_metrics=operational_metrics,
         authenticator=authenticator,
         user_repository=user_repository,
@@ -270,23 +307,40 @@ def _create_document_indexing_service(
 
 def _create_query_engine(
     *,
-    vector_index: InMemoryVectorIndex,
-    lexical_index: InMemoryBM25Index,
+    retrieval_repository: RetrievalRepository | None,
+    reranker: RerankerProvider | None,
     factories: CompositionFactories | None,
     metrics_recorder: InMemoryMetricsRecorder,
     settings: LoreForgeSettings,
     operational_metrics: InMemoryOperationalMetricsRecorder,
 ) -> ProductionGroundedQueryEngine | None:
     query_embedder = _create_query_embedding_provider(factories, settings)
-    reranker = _create_reranker_provider(factories, settings)
     answer_generator = _create_llm_provider(factories, settings)
-    if query_embedder is None or reranker is None or answer_generator is None:
+
+    _logger.warning(
+        "loreforge.startup askme_composition "
+        "retrieval_repository=%s query_embedder=%s reranker=%s "
+        "answer_generator=%s gemini_generation_model=%s "
+        "gemini_embedding_model=%s",
+        _component_name(retrieval_repository),
+        _component_name(query_embedder),
+        _component_name(reranker),
+        _component_name(answer_generator),
+        settings.providers.gemini.generation_model,
+        settings.providers.gemini.embedding_model,
+    )
+
+    if (
+        retrieval_repository is None
+        or query_embedder is None
+        or reranker is None
+        or answer_generator is None
+    ):
         return None
 
     return ProductionGroundedQueryEngine(
         query_embedder=query_embedder,
-        semantic_retriever=vector_index,
-        lexical_retriever=lexical_index,
+        retrieval_repository=retrieval_repository,
         reranker=reranker,
         answer_generator=answer_generator,
         metrics_recorder=metrics_recorder,
@@ -298,6 +352,12 @@ def _create_document_ingestor(factories: CompositionFactories | None) -> PdfInge
     if factories is None or factories.document_ingestor_factory is None:
         return ingest_pdf
     return factories.document_ingestor_factory()
+
+
+def _component_name(component: object | None) -> str:
+    if component is None:
+        return "none"
+    return type(component).__name__
 
 
 def _create_document_embedding_provider(

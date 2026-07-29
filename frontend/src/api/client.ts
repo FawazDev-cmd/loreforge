@@ -53,7 +53,7 @@ export class ForbiddenApiError extends ApiClientError {
   }
 }
 
-const defaultTimeoutMs = 15000;
+const defaultTimeoutMs = 120000;
 
 export function createApiClient({
   baseUrl,

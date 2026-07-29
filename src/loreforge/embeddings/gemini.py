@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from importlib import import_module
 from math import isfinite
+from time import perf_counter
 from typing import Any, Protocol, cast
 from uuid import uuid4
 
@@ -14,6 +16,8 @@ from loreforge.embeddings.models import (
     EmbeddingResult,
     EmbeddingVector,
 )
+
+_logger = logging.getLogger(__name__)
 
 _DOCUMENT_TASK_TYPE = "RETRIEVAL_DOCUMENT"
 _QUERY_TASK_TYPE = "RETRIEVAL_QUERY"
@@ -116,23 +120,50 @@ class GeminiEmbeddingProvider:
             msg = "requests must contain at least one request"
             raise ValueError(msg)
 
+        contents = [request.text for request in requests]
+        config = _embedding_config(
+            task_type=task_type,
+            timeout_seconds=self._config.timeout_seconds,
+        )
+        _logger.warning(
+            "askme.latency gemini.embed.request model=%s task_type=%s "
+            "timeout_seconds=%.2f request_count=%d total_chars=%d "
+            "estimated_input_tokens=%d",
+            self._config.model,
+            task_type,
+            self._config.timeout_seconds,
+            len(requests),
+            sum(len(content) for content in contents),
+            _estimate_tokens(*contents),
+        )
+        started_at = perf_counter()
         try:
             response = self._get_client().models.embed_content(
                 model=self._config.model,
-                contents=[request.text for request in requests],
-                config=_embedding_config(
-                    task_type=task_type,
-                    timeout_seconds=self._config.timeout_seconds,
-                ),
+                contents=contents,
+                config=config,
             )
         except GeminiEmbeddingError:
             raise
         except Exception as error:
+            _logger.warning(
+                "askme.latency gemini.embed.error duration_ms=%.2f task_type=%s",
+                (perf_counter() - started_at) * 1000.0,
+                task_type,
+            )
             msg = "gemini embedding request failed"
             raise GeminiEmbeddingError(msg) from error
 
         vectors = _embedding_vectors_from_response(response, requests)
         dimensions = len(vectors[0].values)
+        _logger.warning(
+            "askme.latency gemini.embed.response duration_ms=%.2f "
+            "task_type=%s vector_count=%d dimensions=%d",
+            (perf_counter() - started_at) * 1000.0,
+            task_type,
+            len(vectors),
+            dimensions,
+        )
         return EmbeddingResult(
             model=self._config.model,
             dimensions=dimensions,
@@ -192,6 +223,11 @@ def _float_tuple(values: Any) -> tuple[float, ...]:
         msg = "embedding values must be numeric"
         raise TypeError(msg)
     return tuple(float(value) for value in cast(Iterable[Any], values))
+
+
+def _estimate_tokens(*texts: str) -> int:
+    character_count = sum(len(text) for text in texts)
+    return max(1, (character_count + 3) // 4)
 
 
 def _timeout_milliseconds(timeout_seconds: float) -> int:

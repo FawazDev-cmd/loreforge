@@ -1,6 +1,7 @@
 """Shared application service container."""
 
 from dataclasses import dataclass, field
+from typing import Protocol, runtime_checkable
 
 from loreforge.askme import AskMeService
 from loreforge.auth import (
@@ -17,9 +18,17 @@ from loreforge.observability import (
     InMemoryOperationalMetricsRecorder,
 )
 from loreforge.query import ProductionGroundedQueryEngine
+from loreforge.reranking import RerankerProvider
 from loreforge.retrieval.bm25 import InMemoryBM25Index
 from loreforge.settings import LoreForgeSettings
 from loreforge.vector_index import InMemoryVectorIndex
+
+
+@runtime_checkable
+class _Warmable(Protocol):
+    def warm_up(self) -> None:
+        """Prepare a runtime dependency for first use."""
+        ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -33,6 +42,7 @@ class ApplicationContainer:
     lexical_index: InMemoryBM25Index
     query_engine: ProductionGroundedQueryEngine | None
     metrics_recorder: InMemoryMetricsRecorder
+    reranker: object | None = None
     operational_metrics: InMemoryOperationalMetricsRecorder = field(
         default_factory=InMemoryOperationalMetricsRecorder
     )
@@ -63,6 +73,11 @@ class ApplicationContainer:
         ):
             msg = "query_engine must be a ProductionGroundedQueryEngine or None"
             raise TypeError(msg)
+        if self.reranker is not None and not isinstance(
+            self.reranker, RerankerProvider
+        ):
+            msg = "reranker must be a RerankerProvider or None"
+            raise TypeError(msg)
         if type(self.metrics_recorder) is not InMemoryMetricsRecorder:
             msg = "metrics_recorder must be an InMemoryMetricsRecorder"
             raise TypeError(msg)
@@ -75,6 +90,11 @@ class ApplicationContainer:
         if self.database is not None and type(self.database) is not DatabaseRuntime:
             msg = "database must be a DatabaseRuntime or None"
             raise TypeError(msg)
+
+    def warm_up(self) -> None:
+        """Prepare startup-owned runtime dependencies for first use."""
+        if isinstance(self.reranker, _Warmable):
+            self.reranker.warm_up()
 
     def close(self) -> None:
         """Release owned runtime resources."""

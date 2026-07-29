@@ -1,5 +1,6 @@
 """AskMe end-user query API route."""
 
+import logging
 from typing import Annotated
 from uuid import UUID
 
@@ -18,6 +19,7 @@ from loreforge.askme import (
 from loreforge.auth import AuthenticatedPrincipal
 
 router = APIRouter(tags=["askme"])
+_logger = logging.getLogger(__name__)
 
 _UNAVAILABLE_DETAIL = "AskMe is temporarily unavailable."
 _GROUNDING_DETAIL = "AskMe could not produce a safely grounded answer."
@@ -71,24 +73,29 @@ def ask(
         Depends(get_current_principal),
     ],
 ) -> AskResponse:
+    _logger.warning("askme.trace route.ask.enter")
     try:
         result = service.ask(AskMeRequest(question=request.question))
-    except AskMeUnavailableError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=_UNAVAILABLE_DETAIL,
-        ) from exc
     except AskMeGroundingError as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=_GROUNDING_DETAIL,
         ) from exc
+    except AskMeUnavailableError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=_UNAVAILABLE_DETAIL,
+        ) from exc
 
-    return _ask_response(result)
+    _logger.warning("askme.trace route.ask.service_returned")
+    response = _ask_response(result)
+    _logger.warning("askme.trace route.ask.response_model_built")
+    return response
 
 
 def _ask_response(result: AskMeResult) -> AskResponse:
-    return AskResponse(
+    _logger.warning("askme.trace route.ask_response.enter")
+    response = AskResponse(
         request_id=result.request_id,
         question=result.question,
         answer=result.answer,
@@ -103,6 +110,8 @@ def _ask_response(result: AskMeResult) -> AskResponse:
             for citation in result.citations
         ],
     )
+    _logger.warning("askme.trace route.ask_response.return")
+    return response
 
 
 def _application_container_from_request(request: Request) -> ApplicationContainer:

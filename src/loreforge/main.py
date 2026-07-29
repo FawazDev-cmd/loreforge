@@ -8,9 +8,8 @@ from typing import Annotated, AsyncIterator
 from uuid import UUID, uuid4
 
 from fastapi import Depends, FastAPI, Request, Response, status
-from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-
+from fastapi.responses import JSONResponse
 
 from loreforge.api.admin import router as admin_router
 from loreforge.api.askme import router as askme_router
@@ -47,6 +46,18 @@ def create_app(
         _logger.info("starting LoreForge application")
         container = resolved_container_factory()
         application.state.container = container
+        warm_up_start = perf_counter()
+        _logger.info(
+            "runtime warm-up started", extra={"component": "application_container"}
+        )
+        container.warm_up()
+        _logger.info(
+            "runtime warm-up complete",
+            extra={
+                "component": "application_container",
+                "duration_ms": float((perf_counter() - warm_up_start) * 1000.0),
+            },
+        )
         _logger.info("LoreForge application startup complete")
         try:
             yield
@@ -87,8 +98,14 @@ def create_app(
         error_category: str | None = None
         response: Response | None = None
         try:
+            if request.url.path == "/ask":
+                _logger.warning("askme.trace middleware.call_next.enter")
             response = await call_next(request)
+            if request.url.path == "/ask":
+                _logger.warning("askme.trace middleware.call_next.returned")
             status_code = response.status_code
+            if request.url.path == "/ask":
+                _logger.warning("askme.trace middleware.response.return")
             return response
         except Exception as exc:
             error_category = type(exc).__name__

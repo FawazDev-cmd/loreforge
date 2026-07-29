@@ -121,6 +121,40 @@ def test_local_reranker_reuses_loaded_model() -> None:
     assert len(loaded_models[0].calls) == 2
 
 
+def test_local_reranker_warm_up_loads_model_once() -> None:
+    loaded_models: list[FakeCrossEncoder] = []
+
+    def factory(_model_name: str) -> FakeCrossEncoder:
+        model = FakeCrossEncoder()
+        loaded_models.append(model)
+        return model
+
+    reranker = LocalCrossEncoderReranker(_model_factory=factory)
+
+    reranker.warm_up()
+    reranker.warm_up()
+    reranker.warm_up()
+
+    assert len(loaded_models) == 1
+
+
+def test_local_reranker_score_after_warm_up_does_not_reload_model() -> None:
+    loaded_models: list[FakeCrossEncoder] = []
+
+    def factory(_model_name: str) -> FakeCrossEncoder:
+        model = FakeCrossEncoder()
+        loaded_models.append(model)
+        return model
+
+    reranker = LocalCrossEncoderReranker(_model_factory=factory)
+
+    reranker.warm_up()
+    reranker.score((_request(),))
+
+    assert len(loaded_models) == 1
+    assert len(loaded_models[0].calls) == 1
+
+
 def test_local_reranker_rejects_empty_input() -> None:
     reranker = LocalCrossEncoderReranker(
         _model_factory=lambda _model_name: FakeCrossEncoder()
@@ -174,6 +208,18 @@ def test_local_reranker_wraps_loading_failures() -> None:
 
     with pytest.raises(LocalRerankingError, match="could not be loaded") as error:
         reranker.score((_request(),))
+
+    assert isinstance(error.value.__cause__, RuntimeError)
+
+
+def test_local_reranker_warm_up_wraps_loading_failures() -> None:
+    def factory(_model_name: str) -> FakeCrossEncoder:
+        raise RuntimeError("raw load failure")
+
+    reranker = LocalCrossEncoderReranker(_model_factory=factory)
+
+    with pytest.raises(LocalRerankingError, match="could not be loaded") as error:
+        reranker.warm_up()
 
     assert isinstance(error.value.__cause__, RuntimeError)
 

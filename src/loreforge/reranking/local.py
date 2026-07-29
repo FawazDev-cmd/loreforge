@@ -1,10 +1,14 @@
 """Local Sentence Transformers cross-encoder reranker."""
 
+import logging
 from collections.abc import Callable, Iterable
 from importlib import import_module
+from time import perf_counter
 from typing import Any, cast
 
 from loreforge.reranking.models import RerankingRequest, RerankingScore
+
+_logger = logging.getLogger(__name__)
 
 DEFAULT_CROSS_ENCODER_MODEL_NAME = "cross-encoder/ms-marco-MiniLM-L6-v2"
 
@@ -45,8 +49,19 @@ class LocalCrossEncoderReranker:
             msg = "requests must contain at least one request"
             raise ValueError(msg)
 
+        model_preloaded = self._model is not None
         model = self._get_model()
         pairs = tuple((request.query, request.passage) for request in requests)
+        _logger.warning(
+            "askme.latency reranker.predict.request model=%s request_count=%d "
+            "batch_size=%d model_preloaded=%s total_passage_chars=%d",
+            self.model_name,
+            len(requests),
+            self.batch_size,
+            model_preloaded,
+            sum(len(request.passage) for request in requests),
+        )
+        started_at = perf_counter()
 
         try:
             raw_scores = tuple(
@@ -55,6 +70,12 @@ class LocalCrossEncoderReranker:
         except Exception as error:
             msg = "local reranking inference failed"
             raise LocalRerankingError(msg) from error
+
+        _logger.warning(
+            "askme.latency reranker.predict.response duration_ms=%.2f score_count=%d",
+            (perf_counter() - started_at) * 1000.0,
+            len(raw_scores),
+        )
 
         if len(raw_scores) != len(requests):
             msg = "local reranking model returned an unexpected number of scores"
@@ -71,13 +92,30 @@ class LocalCrossEncoderReranker:
 
     def _get_model(self) -> Any:
         if self._model is None:
+            _logger.warning(
+                "askme.latency reranker.model_load.request model=%s",
+                self.model_name,
+            )
+            started_at = perf_counter()
             try:
                 self._model = self._model_factory(self.model_name)
             except Exception as error:
+                _logger.warning(
+                    "askme.latency reranker.model_load.error duration_ms=%.2f",
+                    (perf_counter() - started_at) * 1000.0,
+                )
                 msg = "local reranking model could not be loaded"
                 raise LocalRerankingError(msg) from error
+            _logger.warning(
+                "askme.latency reranker.model_load.response duration_ms=%.2f",
+                (perf_counter() - started_at) * 1000.0,
+            )
 
         return self._model
+
+    def warm_up(self) -> None:
+        """Load the local cross-encoder model before the first scoring request."""
+        self._get_model()
 
 
 def _to_float(value: Any) -> float:

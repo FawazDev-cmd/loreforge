@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from importlib import import_module
 from math import isfinite
+from time import perf_counter
 from typing import Any, Protocol, cast
 
 from loreforge.generation.models import GenerationRequest, GenerationResponse
+
+_logger = logging.getLogger(__name__)
 
 
 class GeminiGenerationError(RuntimeError):
@@ -81,22 +85,51 @@ class GeminiLLMProvider:
 
     def generate(self, request: GenerationRequest) -> GenerationResponse:
         """Generate raw text for one provider-independent generation request."""
+        config = _generation_config(
+            request,
+            timeout_seconds=self._config.timeout_seconds,
+        )
+        _logger.warning(
+            "askme.latency gemini.generate.request model=%s timeout_seconds=%.2f "
+            "stream=false system_prompt_chars=%d user_prompt_chars=%d "
+            "estimated_input_tokens=%d max_output_tokens=%d temperature=%.2f",
+            self._config.model,
+            self._config.timeout_seconds,
+            len(request.system_prompt),
+            len(request.user_prompt),
+            _estimate_tokens(request.system_prompt, request.user_prompt),
+            request.max_output_tokens,
+            request.temperature,
+        )
+        started_at = perf_counter()
         try:
             response = self._get_client().models.generate_content(
                 model=self._config.model,
                 contents=request.user_prompt,
-                config=_generation_config(
-                    request,
-                    timeout_seconds=self._config.timeout_seconds,
-                ),
+                config=config,
             )
         except GeminiGenerationError:
             raise
         except Exception as error:
+            _logger.warning(
+                "askme.latency gemini.generate.error duration_ms=%.2f",
+                (perf_counter() - started_at) * 1000.0,
+            )
             msg = "gemini generation request failed"
             raise GeminiGenerationError(msg) from error
 
-        return _generation_response_from_response(response, self._config.model)
+        generation_response = _generation_response_from_response(
+            response,
+            self._config.model,
+        )
+        _logger.warning(
+            "askme.latency gemini.generate.response duration_ms=%.2f "
+            "response_text_chars=%d finish_reason=%s",
+            (perf_counter() - started_at) * 1000.0,
+            len(generation_response.text),
+            generation_response.finish_reason,
+        )
+        return generation_response
 
     def _get_client(self) -> _GeminiClient:
         if self._client is None:
@@ -169,6 +202,11 @@ def _field(value: Any, name: str) -> Any:
     if isinstance(value, dict):
         return value.get(name)
     return getattr(value, name, None)
+
+
+def _estimate_tokens(*texts: str) -> int:
+    character_count = sum(len(text) for text in texts)
+    return max(1, (character_count + 3) // 4)
 
 
 def _timeout_milliseconds(timeout_seconds: float) -> int:

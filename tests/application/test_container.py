@@ -10,6 +10,7 @@ from loreforge.catalog import CatalogService, InMemoryCatalogRepository
 from loreforge.generation.validation_models import ValidatedGroundedAnswer
 from loreforge.indexing import DocumentIndexingService
 from loreforge.observability import InMemoryMetricsRecorder
+from loreforge.reranking import RerankingRequest, RerankingScore
 from loreforge.retrieval.bm25 import InMemoryBM25Index
 from loreforge.vector_index import InMemoryVectorIndex
 
@@ -137,6 +138,7 @@ def test_container_is_immutable() -> None:
 
 def test_container_retains_service_identity() -> None:
     services = _services()
+    reranker = WarmableReranker()
 
     container = ApplicationContainer(
         catalog_service=services.catalog_service,
@@ -146,6 +148,7 @@ def test_container_retains_service_identity() -> None:
         lexical_index=services.lexical_index,
         query_engine=None,
         metrics_recorder=services.metrics_recorder,
+        reranker=reranker,
     )
 
     assert container.catalog_service is services.catalog_service
@@ -155,6 +158,29 @@ def test_container_retains_service_identity() -> None:
     assert container.lexical_index is services.lexical_index
     assert container.query_engine is None
     assert container.metrics_recorder is services.metrics_recorder
+    assert container.reranker is reranker
+
+
+def test_container_warm_up_invokes_reranker() -> None:
+    reranker = WarmableReranker()
+    container = _container(reranker=reranker)
+
+    container.warm_up()
+
+    assert reranker.warm_up_calls == 1
+
+
+def test_container_warm_up_without_warmable_reranker_is_noop() -> None:
+    container = _container(reranker=ScoreOnlyReranker())
+
+    container.warm_up()
+
+
+def test_container_warm_up_failure_propagates() -> None:
+    container = _container(reranker=FailingWarmableReranker())
+
+    with pytest.raises(RuntimeError, match="warm-up failed"):
+        container.warm_up()
 
 
 def test_container_has_no_fastapi_or_pydantic_imports() -> None:
@@ -163,6 +189,37 @@ def test_container_has_no_fastapi_or_pydantic_imports() -> None:
     assert "fastapi" not in source.lower()
     assert "starlette" not in source.lower()
     assert "pydantic" not in source.lower()
+
+
+class WarmableReranker:
+    def __init__(self) -> None:
+        self.warm_up_calls = 0
+
+    def warm_up(self) -> None:
+        self.warm_up_calls += 1
+
+    def score(
+        self,
+        requests: tuple[RerankingRequest, ...],
+    ) -> tuple[RerankingScore, ...]:
+        return tuple(
+            RerankingScore(item_id=request.item_id, score=1.0) for request in requests
+        )
+
+
+class FailingWarmableReranker(WarmableReranker):
+    def warm_up(self) -> None:
+        raise RuntimeError("warm-up failed")
+
+
+class ScoreOnlyReranker:
+    def score(
+        self,
+        requests: tuple[RerankingRequest, ...],
+    ) -> tuple[RerankingScore, ...]:
+        return tuple(
+            RerankingScore(item_id=request.item_id, score=1.0) for request in requests
+        )
 
 
 class Services:
@@ -180,7 +237,7 @@ class Services:
         )
 
 
-def _container() -> ApplicationContainer:
+def _container(*, reranker: object | None = None) -> ApplicationContainer:
     services = _services()
     return ApplicationContainer(
         catalog_service=services.catalog_service,
@@ -190,6 +247,7 @@ def _container() -> ApplicationContainer:
         lexical_index=services.lexical_index,
         query_engine=None,
         metrics_recorder=services.metrics_recorder,
+        reranker=reranker,
     )
 
 

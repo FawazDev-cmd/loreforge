@@ -1,6 +1,8 @@
 """Production grounded-query composition engine."""
 
+import logging
 from collections.abc import Callable
+from time import perf_counter
 from uuid import UUID, uuid4
 
 from loreforge.embeddings import EmbeddingVector, QueryEmbeddingProvider
@@ -44,13 +46,14 @@ from loreforge.retrieval import (
     LexicalSearchResponse,
     LexicalSearchResult,
 )
-from loreforge.retrieval.bm25 import InMemoryBM25Index
 from loreforge.retrieval.hybrid import reciprocal_rank_fusion
-from loreforge.vector_index import InMemoryVectorIndex, VectorSearchResult
+from loreforge.retrieval.repository import RetrievalRepository
+from loreforge.vector_index import VectorSearchResult
 
 _QUERY_EXECUTION_ERROR = "query execution failed"
 _NO_RELEVANT_EVIDENCE = "no relevant evidence was found"
 _OBSERVED_OPERATION = "askme.query"
+_logger = logging.getLogger(__name__)
 
 HybridFuser = Callable[
     [tuple[VectorSearchResult, ...], tuple[LexicalSearchResult, ...], int, int],
@@ -74,8 +77,7 @@ class ProductionGroundedQueryEngine:
         self,
         *,
         query_embedder: QueryEmbeddingProvider,
-        semantic_retriever: InMemoryVectorIndex,
-        lexical_retriever: InMemoryBM25Index,
+        retrieval_repository: RetrievalRepository,
         reranker: RerankerProvider,
         answer_generator: LLMProvider,
         hybrid_fuser: HybridFuser | None = None,
@@ -98,8 +100,7 @@ class ProductionGroundedQueryEngine:
         temperature: float = 0.0,
     ) -> None:
         self._query_embedder = query_embedder
-        self._semantic_retriever = semantic_retriever
-        self._lexical_retriever = lexical_retriever
+        self._retrieval_repository = retrieval_repository
         self._reranker = reranker
         self._answer_generator = answer_generator
         self._hybrid_fuser = hybrid_fuser or _default_hybrid_fuser
@@ -125,17 +126,23 @@ class ProductionGroundedQueryEngine:
         """Return a citation-validated grounded answer for a question."""
         if self._metrics_recorder is None:
             return self._answer_unobserved(question)
+        _logger.warning("askme.trace engine.answer.observed_enter")
         return self._answer_observed(question)
 
     def _answer_unobserved(self, question: str) -> ValidatedGroundedAnswer:
         self._validate_question(question)
+
         query_vector = self._embed_query(question)
         semantic_results = self._semantic_search(query_vector)
         lexical_response = self._lexical_search(question)
+
         if not semantic_results and not lexical_response.results:
             raise NoRelevantEvidenceError(_NO_RELEVANT_EVIDENCE)
 
-        hybrid_results = self._fuse_results(semantic_results, lexical_response)
+        hybrid_results = self._fuse_results(
+            semantic_results,
+            lexical_response,
+        )
         if not hybrid_results:
             raise NoRelevantEvidenceError(_NO_RELEVANT_EVIDENCE)
 
@@ -148,7 +155,12 @@ class ProductionGroundedQueryEngine:
             raise NoRelevantEvidenceError(_NO_RELEVANT_EVIDENCE)
 
         prompt = self._build_prompt(question, evidence)
-        grounded_answer = self._generate_answer(question, evidence, prompt)
+        grounded_answer = self._generate_answer(
+            question,
+            evidence,
+            prompt,
+        )
+
         return self._enforce_citations(grounded_answer)
 
     def _answer_observed(self, question: str) -> ValidatedGroundedAnswer:
@@ -167,59 +179,179 @@ class ProductionGroundedQueryEngine:
         try:
             with tracer.stage("validation"):
                 self._validate_question(question)
+
             with tracer.stage("query_embedding"):
+                stage_start = perf_counter()
                 query_vector = self._embed_query(question)
+                _log_latency("engine.query_embedding", stage_start)
+
             with tracer.stage("semantic_retrieval"):
+                _logger.warning("askme.trace engine.semantic_retrieval.enter")
+                stage_start = perf_counter()
                 semantic_results = self._semantic_search(query_vector)
+                _logger.warning("askme.trace engine.semantic_retrieval.return")
+                _log_latency(
+                    "engine.semantic_retrieval",
+                    stage_start,
+                    result_count=len(semantic_results),
+                )
+
             observation.semantic_result_count = len(semantic_results)
+
             with tracer.stage("lexical_retrieval"):
+                _logger.warning("askme.trace engine.lexical_retrieval.enter")
+                stage_start = perf_counter()
                 lexical_response = self._lexical_search(question)
+                _logger.warning("askme.trace engine.lexical_retrieval.return")
+                _log_latency(
+                    "engine.lexical_retrieval",
+                    stage_start,
+                    result_count=len(lexical_response.results),
+                )
+
             observation.lexical_result_count = len(lexical_response.results)
+
             if not semantic_results and not lexical_response.results:
                 raise NoRelevantEvidenceError(_NO_RELEVANT_EVIDENCE)
 
             with tracer.stage("hybrid_fusion"):
-                hybrid_results = self._fuse_results(semantic_results, lexical_response)
+                stage_start = perf_counter()
+                hybrid_results = self._fuse_results(
+                    semantic_results,
+                    lexical_response,
+                )
+
+            _log_latency(
+                "engine.hybrid_fusion",
+                stage_start,
+                result_count=len(hybrid_results),
+            )
             observation.fused_result_count = len(hybrid_results)
+
             if not hybrid_results:
                 raise NoRelevantEvidenceError(_NO_RELEVANT_EVIDENCE)
 
             with tracer.stage("reranking"):
-                reranked = self._rerank(question, hybrid_results)
+                _logger.warning("askme.trace engine.reranking.enter")
+                stage_start = perf_counter()
+                reranked = self._rerank(
+                    question,
+                    hybrid_results,
+                )
+                _logger.warning("askme.trace engine.reranking.return")
+                _log_latency(
+                    "engine.reranking",
+                    stage_start,
+                    candidate_count=len(hybrid_results),
+                    result_count=len(reranked.results),
+                )
+
             observation.reranked_result_count = len(reranked.results)
+
             if not reranked.results:
                 raise NoRelevantEvidenceError(_NO_RELEVANT_EVIDENCE)
 
             with tracer.stage("evidence_construction"):
+                stage_start = perf_counter()
                 evidence = self._build_evidence(reranked)
+                _log_latency(
+                    "engine.evidence_construction",
+                    stage_start,
+                    evidence_count=len(evidence.items),
+                    evidence_chars=evidence.total_characters,
+                    truncated=evidence.truncated,
+                )
+
             observation.evidence_count = len(evidence.items)
+
             if not evidence.items:
                 raise NoRelevantEvidenceError(_NO_RELEVANT_EVIDENCE)
 
             with tracer.stage("prompt_construction"):
-                prompt = self._build_prompt(question, evidence)
+                stage_start = perf_counter()
+                prompt = self._build_prompt(
+                    question,
+                    evidence,
+                )
+                _log_latency(
+                    "engine.prompt_construction",
+                    stage_start,
+                    system_prompt_chars=len(prompt.system_prompt),
+                    user_prompt_chars=len(prompt.user_prompt),
+                    estimated_input_tokens=_estimate_tokens(
+                        prompt.system_prompt,
+                        prompt.user_prompt,
+                    ),
+                )
+
             with tracer.stage("generation"):
-                grounded_answer = self._generate_answer(question, evidence, prompt)
+                _logger.warning("askme.trace engine.generation.enter")
+                stage_start = perf_counter()
+                grounded_answer = self._generate_answer(
+                    question,
+                    evidence,
+                    prompt,
+                )
+                _logger.warning("askme.trace engine.generation.return")
+                _log_latency(
+                    "engine.generation",
+                    stage_start,
+                    provider_model=grounded_answer.provider_model,
+                    answer_chars=len(grounded_answer.answer_text),
+                    source_count=len(grounded_answer.sources),
+                )
+
             observation.provider_model = grounded_answer.provider_model
             observation.finish_reason = grounded_answer.finish_reason
+
             with tracer.stage("citation_validation"):
+                _logger.warning("askme.trace engine.citation_validation.enter")
+                stage_start = perf_counter()
                 validated_answer = self._enforce_citations(grounded_answer)
+                _logger.warning("askme.trace engine.citation_validation.return")
+                _log_latency(
+                    "engine.citation_validation",
+                    stage_start,
+                    citation_count=len(
+                        validated_answer.citation_validation.citation_ids
+                    ),
+                    cited_source_count=len(validated_answer.cited_sources),
+                )
+
+            _logger.warning("askme.trace engine.record_citation_evaluation.enter")
             observation.record_citation_evaluation(validated_answer)
+            _logger.warning("askme.trace engine.record_citation_evaluation.return")
+
         except BaseException as exc:
-            self._finish_failure_safely(tracer, exc, observation)
+            self._finish_failure_safely(
+                tracer,
+                exc,
+                observation,
+            )
             raise
 
-        self._finish_success_safely(tracer, observation)
+        _logger.warning("askme.trace engine.finish_success.enter")
+        self._finish_success_safely(
+            tracer,
+            observation,
+        )
+        _logger.warning("askme.trace engine.finish_success.return")
+        _logger.warning("askme.trace engine.answer.return")
         return validated_answer
 
     def _validate_question(self, question: str) -> None:
         question_object: object = question
+
         if type(question_object) is not str:
             raise QueryCompositionError("question must be a string")
+
         if not question.strip():
             raise QueryCompositionError("question must not be empty")
 
-    def _embed_query(self, question: str) -> EmbeddingVector:
+    def _embed_query(
+        self,
+        question: str,
+    ) -> EmbeddingVector:
         try:
             return self._query_embedder.embed_query(question)
         except QueryCompositionError:
@@ -232,7 +364,7 @@ class ProductionGroundedQueryEngine:
         query_vector: EmbeddingVector,
     ) -> tuple[VectorSearchResult, ...]:
         try:
-            return self._semantic_retriever.search(
+            return self._retrieval_repository.vector_search(
                 query_vector=query_vector.values,
                 top_k=self._semantic_top_k,
             )
@@ -241,11 +373,16 @@ class ProductionGroundedQueryEngine:
         except Exception as exc:
             raise QueryExecutionError(_QUERY_EXECUTION_ERROR) from exc
 
-    def _lexical_search(self, question: str) -> LexicalSearchResponse:
+    def _lexical_search(
+        self,
+        question: str,
+    ) -> LexicalSearchResponse:
         try:
-            return self._lexical_retriever.search(
-                LexicalSearchRequest(query=question, top_k=self._lexical_top_k)
+            request = LexicalSearchRequest(
+                query=question,
+                top_k=self._lexical_top_k,
             )
+            return self._retrieval_repository.lexical_search(request)
         except QueryCompositionError:
             raise
         except Exception as exc:
@@ -285,7 +422,10 @@ class ProductionGroundedQueryEngine:
         except Exception as exc:
             raise QueryExecutionError(_QUERY_EXECUTION_ERROR) from exc
 
-    def _build_evidence(self, reranked: RerankedSearchResponse) -> EvidenceContext:
+    def _build_evidence(
+        self,
+        reranked: RerankedSearchResponse,
+    ) -> EvidenceContext:
         try:
             return self._evidence_builder(
                 reranked.results,
@@ -296,9 +436,16 @@ class ProductionGroundedQueryEngine:
         except Exception as exc:
             raise QueryExecutionError(_QUERY_EXECUTION_ERROR) from exc
 
-    def _build_prompt(self, question: str, evidence: EvidenceContext) -> PromptPackage:
+    def _build_prompt(
+        self,
+        question: str,
+        evidence: EvidenceContext,
+    ) -> PromptPackage:
         try:
-            return self._prompt_builder(question, evidence)
+            return self._prompt_builder(
+                question,
+                evidence,
+            )
         except QueryCompositionError:
             raise
         except Exception as exc:
@@ -318,8 +465,10 @@ class ProductionGroundedQueryEngine:
             )
             generation_response = self._answer_generator.generate(generation_request)
             sources = source_references_from_evidence(evidence)
+
             if not sources:
                 raise NoRelevantEvidenceError(_NO_RELEVANT_EVIDENCE)
+
             return GroundedAnswer(
                 question=question,
                 answer_text=generation_response.text,
@@ -336,7 +485,10 @@ class ProductionGroundedQueryEngine:
         except Exception as exc:
             raise QueryExecutionError(_QUERY_EXECUTION_ERROR) from exc
 
-    def _enforce_citations(self, answer: GroundedAnswer) -> ValidatedGroundedAnswer:
+    def _enforce_citations(
+        self,
+        answer: GroundedAnswer,
+    ) -> ValidatedGroundedAnswer:
         try:
             return self._citation_enforcer(answer)
         except QueryCompositionError:
@@ -353,25 +505,49 @@ class ProductionGroundedQueryEngine:
     ) -> None:
         if self._operational_metrics is None:
             return
+
         labels = {"success": str(success)}
-        self._operational_metrics.increment("retrieval_query_total", labels=labels)
+
+        self._operational_metrics.increment(
+            "retrieval_query_total",
+            labels=labels,
+        )
         self._operational_metrics.observe_duration(
             "retrieval_duration_ms",
             duration_ms,
             labels=labels,
         )
-        self._increment_result_count("vector", observation.semantic_result_count)
-        self._increment_result_count("bm25", observation.lexical_result_count)
-        self._increment_result_count("fused", observation.fused_result_count)
-        self._increment_result_count("final", observation.reranked_result_count)
+
+        self._increment_result_count(
+            "vector",
+            observation.semantic_result_count,
+        )
+        self._increment_result_count(
+            "bm25",
+            observation.lexical_result_count,
+        )
+        self._increment_result_count(
+            "fused",
+            observation.fused_result_count,
+        )
+        self._increment_result_count(
+            "final",
+            observation.reranked_result_count,
+        )
+
         if observation.evidence_count == 0 or (
             not success and observation.failure_category == "NoRelevantEvidenceError"
         ):
             self._operational_metrics.increment("retrieval_empty_result_total")
 
-    def _increment_result_count(self, stage: str, count: int | None) -> None:
+    def _increment_result_count(
+        self,
+        stage: str,
+        count: int | None,
+    ) -> None:
         if self._operational_metrics is None or count is None or count <= 0:
             return
+
         self._operational_metrics.increment(
             "retrieval_candidate_total",
             labels={"stage": stage},
@@ -383,16 +559,24 @@ class ProductionGroundedQueryEngine:
         tracer: RequestTracer,
         observation: "_RuntimeObservationBuilder",
     ) -> None:
+        _logger.warning("askme.trace engine.finish_success.to_observation.enter")
         runtime_observation = observation.to_observation()
+        _logger.warning("askme.trace engine.finish_success.to_observation.return")
+
         try:
+            _logger.warning("askme.trace engine.finish_success.tracer_finish.enter")
             trace = tracer.finish_success(observation=runtime_observation)
+            _logger.warning("askme.trace engine.finish_success.tracer_finish.return")
         except Exception:
             return
+
+        _logger.warning("askme.trace engine.finish_success.record_metrics.enter")
         self._record_retrieval_metrics(
             trace.duration_ms,
             runtime_observation,
             success=True,
         )
+        _logger.warning("askme.trace engine.finish_success.record_metrics.return")
 
     def _finish_failure_safely(
         self,
@@ -401,10 +585,15 @@ class ProductionGroundedQueryEngine:
         observation: "_RuntimeObservationBuilder",
     ) -> None:
         runtime_observation = observation.to_observation(error)
+
         try:
-            trace = tracer.finish_failure(error, observation=runtime_observation)
+            trace = tracer.finish_failure(
+                error,
+                observation=runtime_observation,
+            )
         except Exception:
             return
+
         self._record_retrieval_metrics(
             trace.duration_ms,
             runtime_observation,
@@ -454,6 +643,22 @@ class _RuntimeObservationBuilder:
             finish_reason=self.finish_reason,
             failure_category=None if error is None else type(error).__name__,
         )
+
+
+def _log_latency(stage: str, started_at: float, **metadata: object) -> None:
+    details = " ".join(f"{key}={value}" for key, value in sorted(metadata.items()))
+    suffix = f" {details}" if details else ""
+    _logger.warning(
+        "askme.latency %s duration_ms=%.2f%s",
+        stage,
+        (perf_counter() - started_at) * 1000.0,
+        suffix,
+    )
+
+
+def _estimate_tokens(*texts: str) -> int:
+    character_count = sum(len(text) for text in texts)
+    return max(1, (character_count + 3) // 4)
 
 
 def _default_reranking_stage(
