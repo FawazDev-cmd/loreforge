@@ -5,53 +5,87 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from loreforge.application import create_application_container
+from loreforge.application import ApplicationRuntimeState, create_application_container
 from loreforge.database import DatabaseRuntime
 from loreforge.main import create_app
 from loreforge.settings import load_settings
 
 
+def test_runtime_state_defaults_to_not_ready() -> None:
+    state = ApplicationRuntimeState()
+
+    assert state.ready is False
+
+
 def test_readiness_requires_started_application_lifespan() -> None:
-    client = TestClient(create_app(settings=load_settings({})))
+    application = create_app(settings=load_settings({}))
+    client = TestClient(application)
 
     response = client.get("/ready")
 
     assert response.status_code == 503
-    assert response.json() == {"status": "not_ready", "service": "loreforge"}
+    assert response.json() == {"ready": False}
 
 
-def test_readiness_returns_ready_after_startup() -> None:
+def test_successful_warm_up_marks_runtime_state_ready() -> None:
+    container = replace(
+        create_application_container(settings=load_settings({})),
+        reranker=WarmableReranker(),
+    )
+    application = create_app(container_factory=lambda: container)
+    state = application.state.runtime_state
+
+    assert state.ready is False
+    with TestClient(application):
+        assert state.ready is True
+
+
+def test_failed_warm_up_never_marks_runtime_state_ready() -> None:
+    container = replace(
+        create_application_container(settings=load_settings({})),
+        reranker=FailingWarmableReranker(),
+    )
+    application = create_app(container_factory=lambda: container)
+    state = application.state.runtime_state
+
+    with pytest.raises(RuntimeError, match="warm-up failed"):
+        with TestClient(application):
+            pass
+
+    assert state.ready is False
+
+
+def test_ready_returns_200_after_successful_warm_up() -> None:
     application = create_app(settings=load_settings({}))
 
     with TestClient(application) as client:
         response = client.get("/ready")
 
     assert response.status_code == 200
-    assert response.json() == {"status": "ready", "service": "loreforge"}
+    assert response.json() == {"ready": True}
 
 
-def test_readiness_checks_configured_database() -> None:
-    engine = create_engine("sqlite+pysqlite:///:memory:")
-    runtime = DatabaseRuntime(
-        engine=engine,
-        session_factory=sessionmaker(bind=engine, expire_on_commit=False),
-    )
-    container = replace(
-        create_application_container(settings=load_settings({})), database=runtime
-    )
-    application = create_app(container_factory=lambda: container)
+def test_health_endpoint_remains_unchanged() -> None:
+    application = create_app(settings=load_settings({}))
+    client = TestClient(application)
 
-    try:
-        with TestClient(application) as client:
-            response = client.get("/ready")
-    finally:
-        engine.dispose()
+    response = client.get("/health")
 
     assert response.status_code == 200
-    assert response.json() == {"status": "ready", "service": "loreforge"}
+    assert response.json() == {"status": "healthy", "service": "loreforge"}
 
 
-def test_readiness_failure_uses_safe_response(
+def test_shutdown_marks_runtime_state_not_ready() -> None:
+    application = create_app(settings=load_settings({}))
+    state = application.state.runtime_state
+
+    with TestClient(application):
+        assert state.ready is True
+
+    assert state.ready is False
+
+
+def test_repeated_ready_reads_do_not_repeat_warm_up_or_external_checks(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     engine = create_engine("sqlite+pysqlite:///:memory:")
@@ -59,24 +93,42 @@ def test_readiness_failure_uses_safe_response(
         engine=engine,
         session_factory=sessionmaker(bind=engine, expire_on_commit=False),
     )
+    reranker = WarmableReranker()
     container = replace(
-        create_application_container(settings=load_settings({})), database=runtime
+        create_application_container(settings=load_settings({})),
+        database=runtime,
+        reranker=reranker,
     )
     application = create_app(container_factory=lambda: container)
+    state = application.state.runtime_state
+    database_health_checks = 0
 
-    def raise_health_error(self: DatabaseRuntime) -> None:
-        raise RuntimeError("raw database secret")
+    def count_database_health_check(self: DatabaseRuntime) -> None:
+        nonlocal database_health_checks
+        database_health_checks += 1
+        raise RuntimeError("raw database detail")
 
-    monkeypatch.setattr(DatabaseRuntime, "check_health", raise_health_error)
+    monkeypatch.setattr(
+        DatabaseRuntime,
+        "check_health",
+        count_database_health_check,
+    )
     try:
         with TestClient(application) as client:
-            response = client.get("/ready")
+            assert application.state.runtime_state is state
+            responses = [client.get("/ready") for _ in range(3)]
     finally:
         engine.dispose()
 
-    assert response.status_code == 503
-    assert response.json() == {"status": "not_ready", "service": "loreforge"}
-    assert "raw database secret" not in response.text
+    assert [response.status_code for response in responses] == [200, 200, 200]
+    assert [response.json() for response in responses] == [
+        {"ready": True},
+        {"ready": True},
+        {"ready": True},
+    ]
+    assert application.state.runtime_state is state
+    assert reranker.warm_up_calls == 1
+    assert database_health_checks == 0
 
 
 def test_startup_and_shutdown_are_logged(caplog: pytest.LogCaptureFixture) -> None:

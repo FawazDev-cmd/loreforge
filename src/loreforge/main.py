@@ -15,7 +15,11 @@ from loreforge.api.admin import router as admin_router
 from loreforge.api.askme import router as askme_router
 from loreforge.api.auth import get_current_principal
 from loreforge.api.documents import router as documents_router
-from loreforge.application import ApplicationContainer, create_application_container
+from loreforge.application import (
+    ApplicationContainer,
+    ApplicationRuntimeState,
+    create_application_container,
+)
 from loreforge.auth import AuthenticatedPrincipal
 from loreforge.observability import (
     current_user_id,
@@ -40,6 +44,7 @@ def create_app(
     resolved_container_factory = container_factory or (
         lambda: create_application_container(settings=runtime_settings)
     )
+    runtime_state = ApplicationRuntimeState()
 
     @asynccontextmanager
     async def lifespan(application: FastAPI) -> AsyncIterator[None]:
@@ -51,6 +56,7 @@ def create_app(
             "runtime warm-up started", extra={"component": "application_container"}
         )
         container.warm_up()
+        runtime_state.mark_ready()
         _logger.info(
             "runtime warm-up complete",
             extra={
@@ -63,6 +69,7 @@ def create_app(
             yield
         finally:
             _logger.info("shutting down LoreForge application")
+            runtime_state.mark_not_ready()
             container.close()
             _logger.info("LoreForge application shutdown complete")
 
@@ -71,6 +78,7 @@ def create_app(
         version=runtime_settings.application.api_version,
         lifespan=lifespan,
     )
+    application.state.runtime_state = runtime_state
 
     if runtime_settings.api.cors_allowed_origins:
         application.add_middleware(
@@ -169,25 +177,12 @@ def create_app(
         }
 
     @application.get("/ready", response_model=None)
-    def ready() -> dict[str, str] | JSONResponse:
-        container = getattr(application.state, "container", None)
-        if type(container) is not ApplicationContainer:
-            return _not_ready(runtime_settings.application.service_name)
+    def ready() -> dict[str, bool] | JSONResponse:
+        state = getattr(application.state, "runtime_state", None)
+        if type(state) is not ApplicationRuntimeState or not state.ready:
+            return _not_ready()
 
-        if container.database is not None:
-            readiness_start = perf_counter()
-            try:
-                container.database.check_health()
-            except Exception:
-                _record_database_readiness(container, readiness_start, success=False)
-                _logger.warning("readiness database health check failed")
-                return _not_ready(runtime_settings.application.service_name)
-            _record_database_readiness(container, readiness_start, success=True)
-
-        return {
-            "status": "ready",
-            "service": runtime_settings.application.service_name,
-        }
+        return {"ready": True}
 
     return application
 
@@ -272,13 +267,10 @@ def _record_database_readiness(
     )
 
 
-def _not_ready(service_name: str) -> JSONResponse:
+def _not_ready() -> JSONResponse:
     return JSONResponse(
         status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-        content={
-            "status": "not_ready",
-            "service": service_name,
-        },
+        content={"ready": False},
     )
 
 
