@@ -317,19 +317,15 @@ def _create_query_engine(
     query_embedder = _create_query_embedding_provider(factories, settings)
     answer_generator = _create_llm_provider(factories, settings)
 
-    _logger.warning(
+    _logger.info(
         "loreforge.startup askme_composition "
-        "retrieval_repository=%s query_embedder=%s reranker=%s "
-        "answer_generator=%s gemini_generation_model=%s "
-        "gemini_embedding_model=%s",
-        _component_name(retrieval_repository),
-        _component_name(query_embedder),
-        _component_name(reranker),
-        _component_name(answer_generator),
-        settings.providers.gemini.generation_model,
-        settings.providers.gemini.embedding_model,
+        "retrieval_repository_configured=%s query_embedder_configured=%s "
+        "reranker_configured=%s answer_generator_configured=%s",
+        retrieval_repository is not None,
+        query_embedder is not None,
+        reranker is not None,
+        answer_generator is not None,
     )
-
     if (
         retrieval_repository is None
         or query_embedder is None
@@ -352,12 +348,6 @@ def _create_document_ingestor(factories: CompositionFactories | None) -> PdfInge
     if factories is None or factories.document_ingestor_factory is None:
         return ingest_pdf
     return factories.document_ingestor_factory()
-
-
-def _component_name(component: object | None) -> str:
-    if component is None:
-        return "none"
-    return type(component).__name__
 
 
 def _create_document_embedding_provider(

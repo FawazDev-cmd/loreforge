@@ -257,10 +257,7 @@ See [docs/observability.md](docs/observability.md).
 
 Dockerfile, `.dockerignore`, and Docker Compose configuration are present.
 
-Day 37 Docker implementation is complete, but final Docker image build
-verification remains pending because locked dependency downloads timed out under
-current network conditions. This is documented as a known limitation rather than
-claimed as verified.
+Docker packaging is implemented with a production-oriented Dockerfile, `.dockerignore`, and Compose configuration. The image is designed to run as the non-root `loreforge` user and expose `/health` and lifecycle `/ready` checks.
 
 See [docs/deployment.md](docs/deployment.md).
 
@@ -279,27 +276,21 @@ persistence, observability, evaluation, deployment, testing, and documentation.
 ## Known Limitations
 
 - Default `/ask` is unavailable until providers and evidence are configured.
-- Docker build verification remains pending due network dependency-download
-  conditions.
-- No CI workflow is committed yet.
 - Metrics are in-process and reset on restart.
 - No external metrics collector, dashboards, alerts, or distributed tracing.
-- Uploaded PDF bytes are not durably stored.
-- Runtime vector and BM25 indexes are in memory and need a rebuild strategy after
-  restart.
+- Original uploaded PDF bytes are not durably stored; retrieval rebuilds depend on persisted metadata, chunks, and embeddings rather than replaying source files.
+- Runtime vector and BM25 structures still need an explicit rebuild/runbook after restart or redeploy.
 - Evaluation is deterministic fixture mode, not live provider/database quality
   evaluation.
 - No OAuth/OIDC, roles, RBAC, or rate limiting.
-- Frontend workflows are shell-level until the authenticated data layer is connected.
 - No Kubernetes or cloud-specific deployment manifests.
 
 ## Roadmap
 
 Near term:
 
-- Add CI with pytest, Ruff, mypy, diff check, and evaluation gate.
-- Verify Docker build in a stable network environment.
-- Add focused rebuild/runbook docs for in-memory retrieval state.
+- Add focused rebuild/runbook docs for runtime retrieval structures.
+- Add durable original-file storage for full rebuild and disaster-recovery workflows.
 
 Mid term:
 

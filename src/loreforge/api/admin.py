@@ -207,13 +207,9 @@ async def index_document(
             detail="document lifecycle does not allow indexing",
         ) from exc
     except DocumentIndexingExecutionError as exc:
-        import traceback
-
-        traceback.print_exc()
-
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=str(exc),
+            detail="document indexing is temporarily unavailable",
         ) from exc
     except ValueError as exc:
         raise HTTPException(

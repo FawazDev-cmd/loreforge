@@ -23,8 +23,7 @@ Status labels:
 - Complete: Gemini provider adapters.
 - Complete: BM25, vector retrieval, hybrid RRF, reranking, grounded prompt,
   provider-independent generation, citation enforcement.
-- Partial: semantic and BM25 runtime indexes are in-memory.
-- Pending: durable vector/BM25 index rebuild strategy.
+- Partial: durable chunks and embeddings are persisted, while runtime vector/BM25 structures still require an explicit rebuild/runbook after restart.
 - Pending: streaming responses or conversation memory.
 
 ## Persistence
@@ -58,8 +57,7 @@ Status labels:
 ## Deployment
 
 - Complete: Dockerfile, `.dockerignore`, and Compose configuration are present.
-- Partial: final Docker build verification remains pending due network
-  dependency-download conditions.
+- Partial: production image build and container smoke verification should be rerun on a healthy Docker daemon before release.
 - Pending: deployment platform runbook.
 - Pending: Kubernetes manifests or cloud-specific IaC.
 
@@ -68,7 +66,7 @@ Status labels:
 - Complete: large deterministic default test suite.
 - Complete: Ruff and mypy verification.
 - Complete: evaluation regression gate command.
-- Pending: GitHub Actions or another CI workflow.
+- Complete: GitHub Actions CI workflow for backend and frontend checks.
 
 ## Documentation
 

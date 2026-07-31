@@ -126,7 +126,6 @@ class ProductionGroundedQueryEngine:
         """Return a citation-validated grounded answer for a question."""
         if self._metrics_recorder is None:
             return self._answer_unobserved(question)
-        _logger.warning("askme.trace engine.answer.observed_enter")
         return self._answer_observed(question)
 
     def _answer_unobserved(self, question: str) -> ValidatedGroundedAnswer:
@@ -186,10 +185,8 @@ class ProductionGroundedQueryEngine:
                 _log_latency("engine.query_embedding", stage_start)
 
             with tracer.stage("semantic_retrieval"):
-                _logger.warning("askme.trace engine.semantic_retrieval.enter")
                 stage_start = perf_counter()
                 semantic_results = self._semantic_search(query_vector)
-                _logger.warning("askme.trace engine.semantic_retrieval.return")
                 _log_latency(
                     "engine.semantic_retrieval",
                     stage_start,
@@ -199,10 +196,8 @@ class ProductionGroundedQueryEngine:
             observation.semantic_result_count = len(semantic_results)
 
             with tracer.stage("lexical_retrieval"):
-                _logger.warning("askme.trace engine.lexical_retrieval.enter")
                 stage_start = perf_counter()
                 lexical_response = self._lexical_search(question)
-                _logger.warning("askme.trace engine.lexical_retrieval.return")
                 _log_latency(
                     "engine.lexical_retrieval",
                     stage_start,
@@ -232,13 +227,11 @@ class ProductionGroundedQueryEngine:
                 raise NoRelevantEvidenceError(_NO_RELEVANT_EVIDENCE)
 
             with tracer.stage("reranking"):
-                _logger.warning("askme.trace engine.reranking.enter")
                 stage_start = perf_counter()
                 reranked = self._rerank(
                     question,
                     hybrid_results,
                 )
-                _logger.warning("askme.trace engine.reranking.return")
                 _log_latency(
                     "engine.reranking",
                     stage_start,
@@ -285,14 +278,12 @@ class ProductionGroundedQueryEngine:
                 )
 
             with tracer.stage("generation"):
-                _logger.warning("askme.trace engine.generation.enter")
                 stage_start = perf_counter()
                 grounded_answer = self._generate_answer(
                     question,
                     evidence,
                     prompt,
                 )
-                _logger.warning("askme.trace engine.generation.return")
                 _log_latency(
                     "engine.generation",
                     stage_start,
@@ -305,10 +296,8 @@ class ProductionGroundedQueryEngine:
             observation.finish_reason = grounded_answer.finish_reason
 
             with tracer.stage("citation_validation"):
-                _logger.warning("askme.trace engine.citation_validation.enter")
                 stage_start = perf_counter()
                 validated_answer = self._enforce_citations(grounded_answer)
-                _logger.warning("askme.trace engine.citation_validation.return")
                 _log_latency(
                     "engine.citation_validation",
                     stage_start,
@@ -317,10 +306,7 @@ class ProductionGroundedQueryEngine:
                     ),
                     cited_source_count=len(validated_answer.cited_sources),
                 )
-
-            _logger.warning("askme.trace engine.record_citation_evaluation.enter")
             observation.record_citation_evaluation(validated_answer)
-            _logger.warning("askme.trace engine.record_citation_evaluation.return")
 
         except BaseException as exc:
             self._finish_failure_safely(
@@ -329,14 +315,10 @@ class ProductionGroundedQueryEngine:
                 observation,
             )
             raise
-
-        _logger.warning("askme.trace engine.finish_success.enter")
         self._finish_success_safely(
             tracer,
             observation,
         )
-        _logger.warning("askme.trace engine.finish_success.return")
-        _logger.warning("askme.trace engine.answer.return")
         return validated_answer
 
     def _validate_question(self, question: str) -> None:
@@ -559,24 +541,17 @@ class ProductionGroundedQueryEngine:
         tracer: RequestTracer,
         observation: "_RuntimeObservationBuilder",
     ) -> None:
-        _logger.warning("askme.trace engine.finish_success.to_observation.enter")
         runtime_observation = observation.to_observation()
-        _logger.warning("askme.trace engine.finish_success.to_observation.return")
 
         try:
-            _logger.warning("askme.trace engine.finish_success.tracer_finish.enter")
             trace = tracer.finish_success(observation=runtime_observation)
-            _logger.warning("askme.trace engine.finish_success.tracer_finish.return")
         except Exception:
             return
-
-        _logger.warning("askme.trace engine.finish_success.record_metrics.enter")
         self._record_retrieval_metrics(
             trace.duration_ms,
             runtime_observation,
             success=True,
         )
-        _logger.warning("askme.trace engine.finish_success.record_metrics.return")
 
     def _finish_failure_safely(
         self,

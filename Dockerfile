@@ -1,5 +1,3 @@
-# syntax=docker/dockerfile:1
-
 FROM python:3.13-slim AS builder
 
 COPY --from=ghcr.io/astral-sh/uv:0.9.17 /uv /usr/local/bin/uv
@@ -16,7 +14,7 @@ COPY alembic.ini ./alembic.ini
 COPY migrations ./migrations
 
 ENV UV_HTTP_TIMEOUT=300
-RUN uv sync --locked --no-dev
+RUN uv sync --locked --no-dev --no-editable
 
 
 FROM python:3.13-slim AS runtime
@@ -41,7 +39,7 @@ USER loreforge
 
 EXPOSE 8000
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=15s --start-period=10s --retries=3 \
     CMD python -c "from urllib.request import urlopen; urlopen('http://127.0.0.1:8000/health', timeout=3).read()"
 
 CMD ["uvicorn", "loreforge.main:app", "--app-dir", "src", "--host", "0.0.0.0", "--port", "8000"]

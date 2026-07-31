@@ -1,6 +1,5 @@
 """Framework-independent AskMe application service."""
 
-import logging
 from collections.abc import Callable
 from typing import Protocol, runtime_checkable
 from uuid import UUID, uuid4
@@ -21,7 +20,6 @@ from loreforge.query import (
 
 _GENERIC_GROUNDING_ERROR = "AskMe could not produce a safely grounded answer."
 _GENERIC_UNAVAILABLE_ERROR = "AskMe is temporarily unavailable."
-_logger = logging.getLogger(__name__)
 
 
 @runtime_checkable
@@ -47,10 +45,8 @@ class AskMeService:
 
     def ask(self, request: AskMeRequest) -> AskMeResult:
         """Answer an AskMe request with validated source citations."""
-        _logger.warning("askme.trace service.ask.engine_enter")
         try:
             validated_answer = self._query_engine.answer(request.question)
-            _logger.warning("askme.trace service.ask.engine_returned")
         except AskMeError:
             raise
         except NoRelevantEvidenceError as exc:
@@ -62,15 +58,10 @@ class AskMeService:
         except Exception as exc:
             raise AskMeUnavailableError(_GENERIC_UNAVAILABLE_ERROR) from exc
 
-        _logger.warning("askme.trace service.ask.validate_answer.enter")
         self._validate_grounded_answer(validated_answer, request.question)
-        _logger.warning("askme.trace service.ask.validate_answer.return")
-        _logger.warning("askme.trace service.ask.request_id.enter")
         request_id = self._new_request_id()
-        _logger.warning("askme.trace service.ask.request_id.return")
         grounded_answer = validated_answer.grounded_answer
 
-        _logger.warning("askme.trace service.ask.result_model.enter")
         result = AskMeResult(
             request_id=request_id,
             question=request.question,
@@ -80,8 +71,6 @@ class AskMeService:
                 for source in validated_answer.cited_sources
             ),
         )
-        _logger.warning("askme.trace service.ask.result_model.return")
-        _logger.warning("askme.trace service.ask.return")
         return result
 
     def _validate_grounded_answer(

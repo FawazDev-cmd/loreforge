@@ -106,14 +106,8 @@ def create_app(
         error_category: str | None = None
         response: Response | None = None
         try:
-            if request.url.path == "/ask":
-                _logger.warning("askme.trace middleware.call_next.enter")
             response = await call_next(request)
-            if request.url.path == "/ask":
-                _logger.warning("askme.trace middleware.call_next.returned")
             status_code = response.status_code
-            if request.url.path == "/ask":
-                _logger.warning("askme.trace middleware.response.return")
             return response
         except Exception as exc:
             error_category = type(exc).__name__

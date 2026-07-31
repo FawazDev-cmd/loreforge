@@ -9,7 +9,7 @@ The Dockerfile uses:
 
 - Python 3.13 slim base images
 - a pinned `uv` image for locked dependency installation
-- `uv sync --locked --no-dev` for deterministic runtime dependencies
+- `uv sync --locked --no-dev --no-editable` for deterministic runtime dependencies
 - a non-root `loreforge` user
 - copied Alembic migration files for optional startup migrations
 - a lightweight `/health` container health check
@@ -17,7 +17,7 @@ The Dockerfile uses:
 Build locally:
 
 ```bash
-docker build .
+docker build -t loreforge:latest .
 ```
 
 Run the image:
@@ -43,8 +43,7 @@ Start locally:
 docker compose up --build
 ```
 
-Compose loads `.env` when present and keeps it optional for configuration
-validation. The service binds `0.0.0.0` inside the container and exposes host
+Compose loads `.env.docker` when present and keeps it optional for configuration validation. The service binds `0.0.0.0` inside the container and exposes host
 port `${LOREFORGE_API_PORT:-8000}`.
 
 ## Runtime Environment
@@ -78,12 +77,7 @@ Never log, commit, or bake secrets into images.
 
 - `GET /health` is a liveness endpoint. It confirms the FastAPI process is
   running and does not check external dependencies.
-- `GET /ready` is a readiness endpoint. It confirms the application container is
-  initialized and checks configured critical dependencies such as PostgreSQL
-  using the existing database health query.
-
-Readiness intentionally does not call LLM providers, embedding providers, or
-remote model APIs.
+- `GET /ready` is a readiness endpoint. It only reports in-process lifecycle state: not ready before startup warm-up finishes, ready after successful warm-up, and not ready again during shutdown.`r`n`r`nReadiness intentionally does not call PostgreSQL, LLM providers, embedding providers, rerankers, query engines, or remote model APIs at request time.
 
 ## Operational Notes
 
@@ -92,3 +86,9 @@ remote model APIs.
 - Startup and shutdown lifecycle events are logged without secrets.
 - Database resources are disposed on application shutdown.
 - Live provider/model calls remain opt-in through explicit configuration.
+
+## Retrieval Rebuild Limitation
+
+LoreForge persists document metadata, ownership, indexing state, chunks, embeddings, and retrieval metadata when PostgreSQL is configured. It does not durably store the original uploaded PDF bytes.
+
+A production rebuild strategy therefore depends on the persisted chunks and embeddings rather than replaying original PDF files from object storage. A fuller production design would add durable file/object storage, content-addressed document blobs, backup/restore procedures, and an explicit rebuild worker or runbook for recreating runtime vector and BM25 structures after deployment or disaster recovery.
