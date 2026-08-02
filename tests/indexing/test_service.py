@@ -808,6 +808,68 @@ def test_successful_indexing_persists_chunks_and_embeddings() -> None:
     )
 
 
+def test_delete_document_removes_catalog_runtime_indexes_and_persisted_records() -> (
+    None
+):
+    chunk_repository = RecordingChunkRepository()
+    embedding_repository = RecordingEmbeddingRepository()
+    indexing_states = InMemoryIndexingStateRepository()
+    state_id = UUID("00000000-0000-0000-0000-000000000303")
+    harness = _harness(
+        chunk_repository=chunk_repository,
+        embedding_repository=embedding_repository,
+        indexing_state_repository=indexing_states,
+    )
+    harness.service._indexing_state_id_factory = lambda: state_id
+    harness.service._clock = lambda: UPLOADED_AT
+    harness.service.index_pdf(
+        document_id=DOC,
+        filename="policy.pdf",
+        media_type="application/pdf",
+        content=PDF_BYTES,
+    )
+
+    harness.service.delete_document(document_id=DOC)
+
+    assert harness.catalog.get(DOC) is None
+    assert harness.vector_index.size == 0
+    assert harness.lexical_index.size == 0
+    assert chunk_repository.chunks == {}
+    assert embedding_repository.embedded_chunks == {}
+    assert chunk_repository.removed == [CHUNK1, CHUNK2]
+    assert embedding_repository.removed == [CHUNK1, CHUNK2]
+    assert indexing_states.list_for_document(DOC) == ()
+
+
+def test_delete_document_preserves_unrelated_runtime_records() -> None:
+    harness = _harness()
+    harness.service.index_pdf(
+        document_id=DOC,
+        filename="policy.pdf",
+        media_type="application/pdf",
+        content=PDF_BYTES,
+    )
+    other_source = DocumentSource("other.pdf", "application/pdf", len(PDF_BYTES))
+    other_chunk = DocumentChunk(
+        chunk_id=OTHER_CHUNK,
+        document_id=OTHER_DOC,
+        source=other_source,
+        page_number=1,
+        chunk_index=0,
+        text="Unrelated policy text.",
+    )
+    other_vector = EmbeddingVector(item_id=OTHER_CHUNK, values=(9.0, 9.0))
+    harness.vector_index.add((_embedded(other_chunk, other_vector),))
+    harness.lexical_index.add((other_chunk,))
+
+    harness.service.delete_document(document_id=DOC)
+
+    assert harness.vector_index.get(CHUNK1) is None
+    assert harness.lexical_index.get(CHUNK1) is None
+    assert harness.vector_index.get(OTHER_CHUNK) is not None
+    assert harness.lexical_index.get(OTHER_CHUNK) == other_chunk
+
+
 def test_failed_indexing_rolls_back_persisted_chunks_and_embeddings() -> None:
     chunk_repository = RecordingChunkRepository()
     embedding_repository = RecordingEmbeddingRepository()

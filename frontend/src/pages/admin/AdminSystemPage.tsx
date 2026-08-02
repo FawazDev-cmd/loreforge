@@ -22,19 +22,19 @@ export function AdminSystemPage() {
       {systemStatus.data ? (
         <div className="dashboard-grid">
           <OperationalStatusCard
-            detail={health ? `Service ${health.service} reports ${health.status}.` : "Not exposed by backend"}
+            detail={health ? `Service ${health.service} reports ${health.status}.` : "Health endpoint is not available."}
             status={health?.status === "healthy" ? "healthy" : "unavailable"}
             title="API health"
           />
           <OperationalStatusCard
-            detail={readiness ? `Service ${readiness.service} reports ${readiness.status}.` : "Not exposed by backend"}
+            detail={readiness ? `Service ${readiness.service} reports ${readiness.status}.` : "Readiness endpoint is not available."}
             status={readiness?.status === "ready" ? "healthy" : readiness ? "warning" : "unavailable"}
             title="Readiness"
           />
-          <OperationalStatusCard detail="Not exposed by backend" status="unknown" title="Application version" />
-          <OperationalStatusCard detail="Not exposed by backend" status="unknown" title="Configured provider" />
-          <OperationalStatusCard detail="Represented by /ready only; granular database readiness is not exposed." status="unknown" title="Database readiness" />
-          <OperationalStatusCard detail="Not exposed by backend" status="unknown" title="Retrieval readiness" />
+          <OperationalStatusCard detail="Version is not exposed by the backend API." status="unknown" title="Application version" />
+          <OperationalStatusCard detail="Provider details are intentionally not exposed in the UI." status="unknown" title="Configured provider" />
+          <OperationalStatusCard detail="Database readiness is represented by lifecycle readiness only." status="unknown" title="Database readiness" />
+          <OperationalStatusCard detail="Retrieval readiness is not exposed as a separate backend check." status="unknown" title="Retrieval readiness" />
         </div>
       ) : null}
     </section>

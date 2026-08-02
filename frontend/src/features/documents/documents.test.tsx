@@ -1,5 +1,5 @@
 import { QueryClientProvider } from "@tanstack/react-query";
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -44,6 +44,8 @@ describe("documents workspace", () => {
 
   afterEach(() => {
     vi.useRealTimers();
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
   });
 
   it("renders the loading state while documents load", () => {
@@ -165,6 +167,71 @@ describe("documents workspace", () => {
     expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 
+  it("confirms and deletes a document, then refreshes the list", async () => {
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        jsonResponse({
+          documents: [
+            {
+              chunk_count: 2,
+              document_id: "doc-ready",
+              filename: "ready.pdf",
+              page_count: 1,
+              status: "READY",
+              uploaded_at: "2026-01-01T00:00:00Z",
+            },
+          ],
+        }),
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+      .mockResolvedValueOnce(jsonResponse({ documents: [] }));
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+
+    renderWithAuth(<WorkspaceDocumentsPage />, { fetchImpl });
+
+    expect(await screen.findByText("ready.pdf")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Delete" }));
+
+    expect(confirmSpy).toHaveBeenCalledWith(
+      "Delete ready.pdf? This removes its metadata and retrieval records from LoreForge.",
+    );
+    await waitFor(() => expect(fetchImpl).toHaveBeenCalledTimes(3));
+    expect(fetchImpl.mock.calls[1]?.[0]).toBe("http://127.0.0.1:8000/admin/documents/doc-ready");
+    expect(fetchImpl.mock.calls[1]?.[1]).toMatchObject({ method: "DELETE" });
+    expect(await screen.findByText("ready.pdf was deleted from LoreForge.")).toBeInTheDocument();
+  });
+
+  it("shows a document deletion failure without removing the row", async () => {
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        jsonResponse({
+          documents: [
+            {
+              chunk_count: 2,
+              document_id: "doc-ready",
+              filename: "ready.pdf",
+              page_count: 1,
+              status: "READY",
+              uploaded_at: "2026-01-01T00:00:00Z",
+            },
+          ],
+        }),
+      )
+      .mockResolvedValueOnce(jsonResponse({ detail: "temporary failure" }, { status: 503 }));
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+
+    renderWithAuth(<WorkspaceDocumentsPage />, { fetchImpl });
+
+    expect(await screen.findByText("ready.pdf")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Delete" }));
+
+    expect(await screen.findByRole("heading", { name: "Delete failed" })).toBeInTheDocument();
+    expect(screen.getByText("LoreForge could not delete the document right now.")).toBeInTheDocument();
+    expect(screen.getByText("ready.pdf")).toBeInTheDocument();
+  });
+
   it("renders an API failure state", async () => {
     const fetchImpl = vi.fn<typeof fetch>().mockImplementation(() =>
       Promise.resolve(jsonResponse({ detail: "server unavailable" }, { status: 503 })),
@@ -201,7 +268,19 @@ describe("documents workspace", () => {
     });
     vi.stubGlobal("XMLHttpRequest", vi.fn(() => xhr));
 
-    renderWithAuth(<WorkspaceUploadPage />, { queryClient });
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
+      jsonResponse({
+        chunk_count: 0,
+        document_id: "doc-2",
+        filename: "handbook.pdf",
+        page_count: 0,
+        status: "UPLOADED",
+        uploaded_at: "2026-01-01T00:00:00Z",
+      }, { status: 201 }),
+    );
+    vi.stubGlobal("fetch", fetchImpl);
+
+    renderWithAuth(<WorkspaceUploadPage />, { fetchImpl, queryClient });
 
     const input = screen.getByLabelText("PDF file");
     await userEvent.upload(input, new File(["%PDF-1.7 content"], "handbook.pdf", { type: "application/pdf" }));
@@ -220,7 +299,19 @@ describe("documents workspace", () => {
     });
     vi.stubGlobal("XMLHttpRequest", vi.fn(() => xhr));
 
-    renderWithAuth(<WorkspaceUploadPage />);
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
+      jsonResponse({
+        chunk_count: 0,
+        document_id: "doc-2",
+        filename: "handbook.pdf",
+        page_count: 0,
+        status: "UPLOADED",
+        uploaded_at: "2026-01-01T00:00:00Z",
+      }, { status: 201 }),
+    );
+    vi.stubGlobal("fetch", fetchImpl);
+
+    renderWithAuth(<WorkspaceUploadPage />, { fetchImpl });
 
     await userEvent.upload(
       screen.getByLabelText("PDF file"),
@@ -234,6 +325,10 @@ describe("documents workspace", () => {
 });
 
 describe("document upload API", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("uses authenticated multipart upload requests and progress callbacks", async () => {
     const xhr = new FakeUploadRequest({
       responseText: JSON.stringify({
@@ -247,6 +342,17 @@ describe("document upload API", () => {
     });
     const progress: number[] = [];
 
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      jsonResponse({
+        chunk_count: 0,
+        document_id: "doc-3",
+        filename: "policy.pdf",
+        page_count: 0,
+        status: "UPLOADED",
+        uploaded_at: "2026-01-01T00:00:00Z",
+      }, { status: 201 }),
+    );
+
     await uploadDocument({
       apiKey: "safe-test-key",
       file: new File(["%PDF-1.7"], "policy.pdf", { type: "application/pdf" }),
@@ -254,9 +360,13 @@ describe("document upload API", () => {
       xhrFactory: () => xhr as unknown as XMLHttpRequest,
     });
 
+    expect(fetchSpy).toHaveBeenCalledWith(
+      "http://127.0.0.1:8000/admin/documents",
+      expect.objectContaining({ method: "POST" }),
+    );
     expect(xhr.headers.Authorization).toBe("Bearer safe-test-key");
     expect(xhr.method).toBe("POST");
-    expect(xhr.url).toBe("http://127.0.0.1:8000/documents/upload");
+    expect(xhr.url).toBe("http://127.0.0.1:8000/admin/documents/doc-3/index");
     expect(progress).toContain(50);
     expect(progress).toContain(100);
   });

@@ -110,6 +110,22 @@ class CatalogService:
         self._require_owner(document_id, owner_user_id)
         return self.mark_deleted(document_id)
 
+    def remove(self, document_id: UUID) -> CatalogEntry:
+        """Remove document metadata from the catalog."""
+        entry = self._require_entry(document_id)
+        self._repository.remove(document_id)
+        return entry
+
+    def remove_for_owner(
+        self,
+        document_id: UUID,
+        owner_user_id: UUID,
+    ) -> CatalogEntry:
+        """Remove owned document metadata without revealing other owners."""
+        entry = self._require_owner(document_id, owner_user_id)
+        self._repository.remove(document_id)
+        return entry
+
     def get(self, document_id: UUID) -> CatalogEntry | None:
         """Return a catalog entry by document ID when present."""
         return self._repository.get(document_id)

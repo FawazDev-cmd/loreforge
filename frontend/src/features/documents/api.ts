@@ -67,6 +67,16 @@ export function listDocuments(
 }
 
 
+export function deleteDocument(
+  apiClient: ApiClient,
+  documentId: string,
+): Promise<void> {
+  return apiClient.request<void>(`/admin/documents/${documentId}`, {
+    method: "DELETE",
+  });
+}
+
+
 export function isActiveDocumentStatus(
   status: DocumentStatus,
 ): boolean {

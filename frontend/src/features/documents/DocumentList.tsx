@@ -3,10 +3,12 @@ import { EmptyState } from "../../components/feedback/EmptyState";
 import { DocumentStatusBadge } from "./DocumentStatusBadge";
 
 type DocumentListProps = {
+  deletingDocumentId?: string | null;
   documents: DocumentResponse[];
+  onDeleteDocument?: (document: DocumentResponse) => void;
 };
 
-export function DocumentList({ documents }: DocumentListProps) {
+export function DocumentList({ deletingDocumentId = null, documents, onDeleteDocument }: DocumentListProps) {
   if (documents.length === 0) {
     return (
       <EmptyState
@@ -26,6 +28,7 @@ export function DocumentList({ documents }: DocumentListProps) {
             <th scope="col">Status</th>
             <th scope="col">Pages</th>
             <th scope="col">Chunks</th>
+            {onDeleteDocument ? <th scope="col">Actions</th> : null}
           </tr>
         </thead>
         <tbody>
@@ -38,6 +41,18 @@ export function DocumentList({ documents }: DocumentListProps) {
               </td>
               <td>{document.page_count}</td>
               <td>{document.chunk_count}</td>
+              {onDeleteDocument ? (
+                <td>
+                  <button
+                    className="table-action"
+                    disabled={deletingDocumentId === document.document_id}
+                    onClick={() => onDeleteDocument(document)}
+                    type="button"
+                  >
+                    {deletingDocumentId === document.document_id ? "Deleting" : "Delete"}
+                  </button>
+                </td>
+              ) : null}
             </tr>
           ))}
         </tbody>

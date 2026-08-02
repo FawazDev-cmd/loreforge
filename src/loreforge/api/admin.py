@@ -301,6 +301,35 @@ def mark_document_deleted(
     )
 
 
+@router.delete("/documents/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_document(
+    document_id: UUID,
+    service: Annotated[
+        DocumentIndexingService,
+        Depends(get_document_indexing_service),
+    ],
+    principal: Annotated[
+        AuthenticatedPrincipal | None,
+        Depends(get_current_principal),
+    ],
+) -> None:
+    try:
+        if principal is None:
+            service.delete_document(document_id=document_id)
+        else:
+            service.delete_document(
+                document_id=document_id,
+                owner_user_id=principal.user.user_id,
+            )
+    except CatalogServiceError as exc:
+        if "does not exist" in str(exc):
+            raise _not_found() from exc
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="document lifecycle does not allow deletion",
+        ) from exc
+
+
 def _indexed_document_response(
     result: IndexedDocumentResult,
 ) -> IndexedDocumentResponse:

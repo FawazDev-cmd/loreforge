@@ -16,7 +16,7 @@ const statusLabel: Record<OperationalStatus, string> = {
   healthy: "Healthy",
   warning: "Warning",
   unavailable: "Unavailable",
-  unknown: "Unknown",
+  unknown: "Not available",
 };
 
 const statusTone: Record<OperationalStatus, "success" | "warning" | "error" | "neutral"> = {

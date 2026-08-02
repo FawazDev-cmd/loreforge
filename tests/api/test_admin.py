@@ -17,7 +17,8 @@ from loreforge.indexing import (
     DocumentIndexingExecutionError,
     IndexedDocumentResult,
 )
-from loreforge.main import app
+from loreforge.main import create_app
+from loreforge.testing import default_test_settings
 
 DOC1 = UUID("00000000-0000-0000-0000-000000000001")
 DOC2 = UUID("00000000-0000-0000-0000-000000000002")
@@ -29,6 +30,22 @@ class FakeIndexingService:
     def __init__(self, error: Exception | None = None) -> None:
         self.error = error
         self.calls: list[dict[str, object]] = []
+
+    def delete_document(
+        self,
+        *,
+        document_id: UUID,
+        owner_user_id: UUID | None = None,
+    ) -> None:
+        self.calls.append(
+            {
+                "document_id": document_id,
+                "owner_user_id": owner_user_id,
+                "operation": "delete",
+            }
+        )
+        if self.error is not None:
+            raise self.error
 
     def index_pdf(
         self,
@@ -59,13 +76,15 @@ class FakeIndexingService:
 @pytest.fixture
 def client(monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
     service = CatalogService(InMemoryCatalogRepository())
-    app.dependency_overrides[admin.get_catalog_service] = lambda: service
+    application = create_app(settings=default_test_settings())
+    application.dependency_overrides[admin.get_catalog_service] = lambda: service
     monkeypatch.setattr(admin, "_new_document_id", lambda: DOC1)
     monkeypatch.setattr(admin, "_utc_now", lambda: UPLOADED_AT)
     try:
-        yield TestClient(app)
+        with TestClient(application) as test_client:
+            yield test_client
     finally:
-        app.dependency_overrides.clear()
+        application.dependency_overrides.clear()
 
 
 def test_health_endpoint_still_works(client: TestClient) -> None:
@@ -232,16 +251,17 @@ def _create_document_with_fresh_client(
     monkeypatch: pytest.MonkeyPatch,
 ) -> dict[str, object]:
     service = CatalogService(InMemoryCatalogRepository())
-    app.dependency_overrides[admin.get_catalog_service] = lambda: service
+    application = create_app(settings=default_test_settings())
+    application.dependency_overrides[admin.get_catalog_service] = lambda: service
     monkeypatch.setattr(admin, "_new_document_id", lambda: DOC1)
     monkeypatch.setattr(admin, "_utc_now", lambda: UPLOADED_AT)
     try:
-        with TestClient(app) as isolated_client:
+        with TestClient(application) as isolated_client:
             response = isolated_client.post("/admin/documents", json=_create_payload())
             assert response.status_code == 201
             return response.json()
     finally:
-        app.dependency_overrides.clear()
+        application.dependency_overrides.clear()
 
 
 def _create_payload(
@@ -257,11 +277,46 @@ def _create_payload(
     }
 
 
+def test_delete_document_success_delegates_to_app_state_service(
+    client: TestClient,
+) -> None:
+    service = FakeIndexingService()
+    client.app.dependency_overrides[admin.get_document_indexing_service] = lambda: (
+        service
+    )
+
+    response = client.delete(f"/admin/documents/{DOC1}")
+
+    assert response.status_code == 204
+    assert response.content == b""
+    assert service.calls == [
+        {
+            "document_id": DOC1,
+            "owner_user_id": None,
+            "operation": "delete",
+        }
+    ]
+
+
+def test_delete_document_unknown_document_returns_404(client: TestClient) -> None:
+    service = FakeIndexingService(CatalogServiceError("document_id does not exist"))
+    client.app.dependency_overrides[admin.get_document_indexing_service] = lambda: (
+        service
+    )
+
+    response = client.delete(f"/admin/documents/{MISSING}")
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "document not found"}
+
+
 def test_index_document_success_delegates_to_app_state_service(
     client: TestClient,
 ) -> None:
     service = FakeIndexingService()
-    app.dependency_overrides[admin.get_document_indexing_service] = lambda: service
+    client.app.dependency_overrides[admin.get_document_indexing_service] = lambda: (
+        service
+    )
 
     response = client.post(
         f"/admin/documents/{DOC1}/index",
@@ -287,7 +342,9 @@ def test_index_document_success_delegates_to_app_state_service(
 
 def test_index_document_unknown_document_returns_404(client: TestClient) -> None:
     service = FakeIndexingService(CatalogServiceError("document_id does not exist"))
-    app.dependency_overrides[admin.get_document_indexing_service] = lambda: service
+    client.app.dependency_overrides[admin.get_document_indexing_service] = lambda: (
+        service
+    )
 
     response = client.post(
         f"/admin/documents/{MISSING}/index",
@@ -300,7 +357,9 @@ def test_index_document_unknown_document_returns_404(client: TestClient) -> None
 
 def test_index_document_already_ready_returns_409(client: TestClient) -> None:
     service = FakeIndexingService(DocumentAlreadyIndexedError("raw duplicate detail"))
-    app.dependency_overrides[admin.get_document_indexing_service] = lambda: service
+    client.app.dependency_overrides[admin.get_document_indexing_service] = lambda: (
+        service
+    )
 
     response = client.post(
         f"/admin/documents/{DOC1}/index",
@@ -313,7 +372,9 @@ def test_index_document_already_ready_returns_409(client: TestClient) -> None:
 
 def test_index_document_invalid_lifecycle_returns_409(client: TestClient) -> None:
     service = FakeIndexingService(CatalogServiceError("cannot transition secret"))
-    app.dependency_overrides[admin.get_document_indexing_service] = lambda: service
+    client.app.dependency_overrides[admin.get_document_indexing_service] = lambda: (
+        service
+    )
 
     response = client.post(
         f"/admin/documents/{DOC1}/index",
@@ -326,7 +387,9 @@ def test_index_document_invalid_lifecycle_returns_409(client: TestClient) -> Non
 
 def test_index_document_invalid_upload_returns_422(client: TestClient) -> None:
     service = FakeIndexingService(UnsupportedDocumentError("raw upload detail"))
-    app.dependency_overrides[admin.get_document_indexing_service] = lambda: service
+    client.app.dependency_overrides[admin.get_document_indexing_service] = lambda: (
+        service
+    )
 
     response = client.post(
         f"/admin/documents/{DOC1}/index",
@@ -339,7 +402,9 @@ def test_index_document_invalid_upload_returns_422(client: TestClient) -> None:
 
 def test_index_document_runtime_failure_returns_safe_503(client: TestClient) -> None:
     service = FakeIndexingService(DocumentIndexingExecutionError("raw model detail"))
-    app.dependency_overrides[admin.get_document_indexing_service] = lambda: service
+    client.app.dependency_overrides[admin.get_document_indexing_service] = lambda: (
+        service
+    )
 
     response = client.post(
         f"/admin/documents/{DOC1}/index",

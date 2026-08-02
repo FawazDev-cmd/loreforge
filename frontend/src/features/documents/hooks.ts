@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ApiClientError, UnauthorizedApiError } from "../../api/client";
 import { useAuth } from "../auth/useAuth";
 import {
+  deleteDocument,
   documentsQueryKey,
   hasActiveDocuments,
   listDocuments,
@@ -62,6 +63,46 @@ export function useDocumentUpload() {
     errorMessage: mutation.error ? documentUploadErrorMessage(mutation.error) : null,
     progress,
   };
+}
+
+export function useDocumentDelete() {
+  const queryClient = useQueryClient();
+  const { apiClient, logout } = useAuth();
+
+  const mutation = useMutation({
+    mutationFn: (documentId: string) => deleteDocument(apiClient, documentId),
+    onError: (error) => {
+      if (error instanceof UnauthorizedApiError) {
+        logout();
+      }
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: documentsQueryKey });
+    },
+  });
+
+  return {
+    ...mutation,
+    errorMessage: mutation.error ? documentDeleteErrorMessage(mutation.error) : null,
+  };
+}
+
+export function documentDeleteErrorMessage(error: unknown): string {
+  if (error instanceof UnauthorizedApiError) {
+    return "Your session is no longer authorized. Sign in again.";
+  }
+  if (error instanceof ApiClientError) {
+    if (error.status === 404) {
+      return "That document is no longer available.";
+    }
+    if (error.status === 409) {
+      return "LoreForge could not delete this document in its current state.";
+    }
+    if (error.status >= 500) {
+      return "LoreForge could not delete the document right now.";
+    }
+  }
+  return "Document deletion failed.";
 }
 
 export function documentUploadErrorMessage(error: unknown): string {

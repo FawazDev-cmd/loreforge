@@ -102,6 +102,12 @@ class InMemoryBM25Index:
         """Return an indexed chunk by ID when present."""
         return self._chunks.get(chunk_id)
 
+    def list_for_document(self, document_id: UUID) -> tuple[DocumentChunk, ...]:
+        """Return indexed chunks for one document in insertion order."""
+        return tuple(
+            chunk for chunk in self._chunks.values() if chunk.document_id == document_id
+        )
+
     def remove(self, chunk_id: UUID) -> bool:
         """Remove a chunk and update corpus statistics."""
         if chunk_id not in self._chunks:
@@ -119,6 +125,17 @@ class InMemoryBM25Index:
         self._recalculate_average_document_length()
 
         return True
+
+    def remove_document(self, document_id: UUID) -> tuple[UUID, ...]:
+        """Remove all indexed chunks for one document."""
+        chunk_ids = tuple(
+            chunk_id
+            for chunk_id, chunk in self._chunks.items()
+            if chunk.document_id == document_id
+        )
+        for chunk_id in chunk_ids:
+            self.remove(chunk_id)
+        return chunk_ids
 
     def search(self, request: LexicalSearchRequest) -> LexicalSearchResponse:
         """Search with BM25 using positive IDF: log(1 + (N - df + .5)/(df + .5))."""

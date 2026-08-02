@@ -60,6 +60,17 @@ class InMemoryVectorIndex:
 
         return True
 
+    def remove_document(self, document_id: UUID) -> tuple[UUID, ...]:
+        """Remove all indexed vectors for one document."""
+        chunk_ids = tuple(
+            chunk_id
+            for chunk_id, indexed in self._items.items()
+            if indexed.chunk.document_id == document_id
+        )
+        for chunk_id in chunk_ids:
+            self.remove(chunk_id)
+        return chunk_ids
+
     def search(
         self,
         *,

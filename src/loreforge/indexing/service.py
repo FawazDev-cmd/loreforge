@@ -78,6 +78,31 @@ class DocumentIndexingService:
         self._clock = clock or _utc_now
         self._operational_metrics = operational_metrics
 
+    def delete_document(
+        self,
+        *,
+        document_id: UUID,
+        owner_user_id: UUID | None = None,
+    ) -> None:
+        """Remove catalog metadata and associated retrieval/index records."""
+        if owner_user_id is None:
+            entry = self._catalog_service.get(document_id)
+        else:
+            entry = self._catalog_service.get_for_owner(document_id, owner_user_id)
+        if entry is None:
+            msg = "document_id does not exist in catalog"
+            raise CatalogServiceError(msg)
+
+        chunk_ids = self._chunk_ids_for_document(document_id)
+        runtime_ids = self._remove_runtime_indexes(document_id)
+        chunk_ids = _deduplicate_ids((*chunk_ids, *runtime_ids))
+        self._remove_persisted_records(chunk_ids)
+        self._remove_indexing_states(document_id)
+        if owner_user_id is None:
+            self._catalog_service.remove(document_id)
+        else:
+            self._catalog_service.remove_for_owner(document_id, owner_user_id)
+
     def index_pdf(
         self,
         *,
@@ -305,6 +330,36 @@ class DocumentIndexingService:
             except Exception:
                 pass
 
+    def _chunk_ids_for_document(self, document_id: UUID) -> tuple[UUID, ...]:
+        if self._chunk_repository is not None:
+            return tuple(
+                chunk.chunk_id
+                for chunk in self._chunk_repository.list_for_document(document_id)
+            )
+        return tuple(
+            chunk.chunk_id
+            for chunk in self._lexical_index.list_for_document(document_id)
+        )
+
+    def _remove_runtime_indexes(self, document_id: UUID) -> tuple[UUID, ...]:
+        vector_ids = self._vector_index.remove_document(document_id)
+        lexical_ids = self._lexical_index.remove_document(document_id)
+        return _deduplicate_ids((*vector_ids, *lexical_ids))
+
+    def _remove_persisted_records(self, chunk_ids: tuple[UUID, ...]) -> None:
+        for chunk_id in chunk_ids:
+            if self._embedding_repository is not None:
+                self._embedding_repository.remove(chunk_id)
+        for chunk_id in chunk_ids:
+            if self._chunk_repository is not None:
+                self._chunk_repository.remove(chunk_id)
+
+    def _remove_indexing_states(self, document_id: UUID) -> None:
+        if self._indexing_state_repository is None:
+            return
+        for state in self._indexing_state_repository.list_for_document(document_id):
+            self._indexing_state_repository.remove(state.state_id)
+
     def _persist_chunks(
         self,
         chunks: tuple[DocumentChunk, ...],
@@ -395,6 +450,10 @@ class DocumentIndexingService:
             )
         except Exception:
             pass
+
+
+def _deduplicate_ids(chunk_ids: tuple[UUID, ...]) -> tuple[UUID, ...]:
+    return tuple(dict.fromkeys(chunk_ids))
 
 
 def _utc_now() -> datetime:

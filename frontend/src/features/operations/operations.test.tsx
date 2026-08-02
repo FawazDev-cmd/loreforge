@@ -52,7 +52,10 @@ describe("engineering operations panel", () => {
     expect(await screen.findByText("Service loreforge reports healthy.")).toBeInTheDocument();
     expect(screen.getByText("Service loreforge reports ready.")).toBeInTheDocument();
     expect(screen.getByText("Application version")).toBeInTheDocument();
-    expect(screen.getAllByText("Not exposed by backend").length).toBeGreaterThanOrEqual(3);
+    expect(screen.getAllByText("Not available").length).toBeGreaterThanOrEqual(3);
+    expect(screen.getByText("Version is not exposed by the backend API.")).toBeInTheDocument();
+    expect(screen.queryByText("Unknown")).not.toBeInTheDocument();
+    expect(screen.queryByText("undefined")).not.toBeInTheDocument();
   });
 
   it("renders unavailable backend fields safely", async () => {
@@ -71,7 +74,10 @@ describe("engineering operations panel", () => {
 
     expect(await screen.findByText("Service loreforge reports healthy.")).toBeInTheDocument();
     expect(screen.getByText("Readiness")).toBeInTheDocument();
-    expect(screen.getAllByText("Not exposed by backend").length).toBeGreaterThanOrEqual(3);
+    expect(screen.getAllByText("Not available").length).toBeGreaterThanOrEqual(3);
+    expect(screen.getByText("Readiness endpoint is not available.")).toBeInTheDocument();
+    expect(screen.queryByText("Unknown")).not.toBeInTheDocument();
+    expect(screen.queryByText("undefined")).not.toBeInTheDocument();
     expect(screen.queryByText(/database URL/i)).not.toBeInTheDocument();
   });
 
