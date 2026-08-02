@@ -3,9 +3,10 @@ from uuid import UUID
 from fastapi.testclient import TestClient
 
 from loreforge.documents.upload import MAX_UPLOAD_SIZE_BYTES, PDF_MEDIA_TYPE
-from loreforge.main import app
+from loreforge.main import create_app
+from loreforge.testing import default_test_settings
 
-client = TestClient(app)
+client = TestClient(create_app(settings=default_test_settings()))
 
 
 def test_upload_valid_pdf_returns_accepted_metadata() -> None:

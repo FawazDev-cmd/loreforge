@@ -1,0 +1,53 @@
+flowchart TD
+    subgraph UploadAcceptance["Lightweight Upload Acceptance"]
+        U1["POST /documents/upload"]
+        U2["Authentication<br/>if enabled"]
+        U3["Bounded file read"]
+        U4["PDF upload validation"]
+        U5["Accepted metadata response"]
+        U6["No PDF persistence<br/>No indexing"]
+
+        U1 --> U2 --> U3 --> U4 --> U5 --> U6
+    end
+
+    subgraph CatalogIndexing["Catalog And Indexing Workflow"]
+        C1["POST /admin/documents"]
+        C2["Create document metadata"]
+        C3["Catalog entry<br/>UPLOADED"]
+
+        I1["POST /admin/documents/{document_id}/index"]
+        I2["Authentication"]
+        I3["Ownership and lifecycle checks"]
+        I4["Bounded PDF read"]
+        I5["PDF parsing"]
+        I6["Text normalisation"]
+        I7["Citation-aware chunking"]
+        I8["Embedding provider"]
+        I9["In-memory vector index write"]
+        I10["In-memory BM25 write"]
+        I11["Optional durable chunk and embedding persistence"]
+        I12["Indexing-state update"]
+        I13{"Indexing result"}
+        I14["Document READY"]
+        I15["Document FAILED"]
+
+        C1 --> C2 --> C3
+        C3 --> I1
+        I1 --> I2 --> I3 --> I4 --> I5 --> I6 --> I7 --> I8
+        I8 --> I9
+        I8 --> I10
+        I8 -. "PostgreSQL configured" .-> I11
+        I9 --> I12
+        I10 --> I12
+        I11 -.-> I12
+        I12 --> I13
+        I13 --> I14
+        I13 --> I15
+    end
+
+    Note["Original PDF bytes are not durably stored by this flow"]
+    U6 -.-> Note
+    I4 -.-> Note
+
+    classDef optional fill:#f8fafc,stroke:#64748b,stroke-dasharray: 4 3
+    class I11,Note optional

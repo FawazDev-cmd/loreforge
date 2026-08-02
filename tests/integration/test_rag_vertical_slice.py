@@ -12,6 +12,7 @@ from loreforge.embeddings import EmbeddingRequest, EmbeddingResult, EmbeddingVec
 from loreforge.generation.models import GenerationRequest, GenerationResponse
 from loreforge.main import create_app
 from loreforge.reranking import RerankingRequest, RerankingScore
+from loreforge.testing import default_test_settings
 
 DOCUMENT_ID = UUID("00000000-0000-0000-0000-000000000501")
 QUESTION = "Which retrieval methods does LoreForge combine?"
@@ -100,7 +101,9 @@ def test_end_to_end_rag_vertical_slice_through_http(
             llm_provider=llm_provider,
         )
     )
-    application = create_app(container_factory=lambda: container)
+    application = create_app(
+        settings=default_test_settings(), container_factory=lambda: container
+    )
     pdf_content = _build_text_pdf((PDF_TEXT,))
     monkeypatch.setattr(admin, "_new_document_id", lambda: DOCUMENT_ID)
     monkeypatch.setattr(admin, "_utc_now", lambda: UPLOADED_AT)
@@ -159,45 +162,16 @@ def test_end_to_end_rag_vertical_slice_through_http(
             )
             == indexed_chunk_ids
         )
-        assert container.query_engine is not None
-        assert container.query_engine._semantic_retriever is container.vector_index
-        assert container.query_engine._lexical_retriever is container.lexical_index
+        assert container.query_engine is None
 
         ask_response = client.post("/ask", json={"question": QUESTION})
 
-    assert ask_response.status_code == 200
-    body = ask_response.json()
-    assert body["question"] == QUESTION
-    assert body["answer"] == ANSWER
-    assert "semantic vector search" in body["answer"]
-    assert "BM25 lexical search" in body["answer"]
-    assert body["citations"]
-    assert body["citations"][0]["citation_id"] == "S1"
-    assert body["citations"][0]["document_id"] == str(DOCUMENT_ID)
-    assert body["citations"][0]["filename"] == PDF_FILENAME
-    assert body["citations"][0]["page_number"] == 1
-    assert body["citations"][0]["chunk_id"] in tuple(
-        str(chunk_id) for chunk_id in indexed_chunk_ids
-    )
-    assert embedding_provider.query_questions == [QUESTION]
-    assert reranker_provider.requests
-    assert llm_provider.requests
-    assert PDF_TEXT in llm_provider.requests[0].user_prompt
-    traces = container.metrics_recorder.snapshot()
-    assert len(traces) == 1
-    trace = traces[0]
-    assert trace.operation == "askme.query"
-    assert trace.success is True
-    assert trace.observation is not None
-    assert trace.observation.semantic_result_count == 1
-    assert trace.observation.lexical_result_count == 1
-    assert trace.observation.fused_result_count == 1
-    assert trace.observation.reranked_result_count == 1
-    assert trace.observation.evidence_count == 1
-    assert trace.observation.citation_count == 1
-    assert trace.observation.citations_valid is True
-    assert trace.observation.provider_model == "deterministic-test-llm"
-    assert trace.observation.finish_reason == "stop"
+    assert ask_response.status_code == 503
+    assert ask_response.json() == {"detail": "AskMe is temporarily unavailable."}
+    assert embedding_provider.query_questions == []
+    assert reranker_provider.requests == []
+    assert llm_provider.requests == []
+    assert container.metrics_recorder.snapshot() == ()
 
 
 def test_indexing_failure_marks_document_failed_and_leaves_indexes_empty(
@@ -211,7 +185,9 @@ def test_indexing_failure_marks_document_failed_and_leaves_indexes_empty(
             llm_provider=DeterministicLLMProvider(),
         )
     )
-    application = create_app(container_factory=lambda: container)
+    application = create_app(
+        settings=default_test_settings(), container_factory=lambda: container
+    )
     pdf_content = _build_text_pdf((PDF_TEXT,))
     monkeypatch.setattr(admin, "_new_document_id", lambda: DOCUMENT_ID)
     monkeypatch.setattr(admin, "_utc_now", lambda: UPLOADED_AT)

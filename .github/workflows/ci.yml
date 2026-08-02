@@ -1,0 +1,91 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend
+    runs-on: ubuntu-latest
+    env:
+      LOREFORGE_ENVIRONMENT: testing
+      LOREFORGE_DOCUMENT_EMBEDDINGS_PROVIDER: disabled
+      LOREFORGE_QUERY_EMBEDDINGS_PROVIDER: disabled
+      LOREFORGE_RERANKER_PROVIDER: disabled
+      LOREFORGE_LLM_PROVIDER: disabled
+      LOREFORGE_DATABASE_URL: ""
+      LOREFORGE_DATABASE_MIGRATIONS_ENABLED: "false"
+      LOREFORGE_RUN_LIVE_GEMINI_SMOKE: "false"
+      LOREFORGE_RUN_LIVE_DATABASE_SMOKE: "false"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install backend dependencies
+        run: uv sync --locked --all-groups
+
+      - name: Run backend tests
+        run: uv run --locked pytest
+
+      - name: Check backend formatting
+        run: uv run --locked ruff format --check .
+
+      - name: Lint backend
+        run: uv run --locked ruff check .
+
+      - name: Type-check backend
+        run: uv run --locked mypy src
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    env:
+      VITE_API_BASE_URL: http://127.0.0.1:8000
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Type-check frontend
+        run: npm run typecheck
+
+      - name: Run frontend tests
+        run: npm test
+
+      - name: Lint frontend
+        run: npm run lint
+
+      - name: Build frontend
+        run: npm run build

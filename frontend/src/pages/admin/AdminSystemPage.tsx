@@ -27,8 +27,8 @@ export function AdminSystemPage() {
             title="API health"
           />
           <OperationalStatusCard
-            detail={readiness ? `Service ${readiness.service} reports ${readiness.status}.` : "Readiness endpoint is not available."}
-            status={readiness?.status === "ready" ? "healthy" : readiness ? "warning" : "unavailable"}
+            detail={readinessDetail(readiness)}
+            status={readinessStatus(readiness)}
             title="Readiness"
           />
           <OperationalStatusCard detail="Version is not exposed by the backend API." status="unknown" title="Application version" />
@@ -39,4 +39,20 @@ export function AdminSystemPage() {
       ) : null}
     </section>
   );
+}
+
+function readinessDetail(readiness: { ready: boolean } | null | undefined): string {
+  if (!readiness) {
+    return "Readiness status could not be retrieved.";
+  }
+  return readiness.ready
+    ? "Application startup and warm-up completed successfully."
+    : "Application startup or warm-up has not completed.";
+}
+
+function readinessStatus(readiness: { ready: boolean } | null | undefined) {
+  if (!readiness) {
+    return "unknown";
+  }
+  return readiness.ready ? "healthy" : "warning";
 }

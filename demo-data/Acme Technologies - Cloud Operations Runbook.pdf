@@ -1,0 +1,344 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [6 0 R 8 0 R 10 0 R 12 0 R] /Count 4 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+5 0 obj
+<< /Length 782 >>
+stream
+0.82 0.86 0.91 RG 0.8 w 58 724 m 554 724 l S
+0.82 0.86 0.91 RG 0.8 w 58 52 m 554 52 l S
+0.35 0.39 0.45 rg
+BT /F1 8.5 Tf 58 736 Td (Acme Technologies - Cloud Operations Runbook) Tj ET
+BT /F1 8 Tf 58 37 Td (Acme Technologies Internal) Tj ET
+BT /F1 8 Tf 507.8 37 Td (Page 1 of 4) Tj ET
+0.090 0.125 0.200 rg
+BT /F2 25.0 Tf 66.0 515.0 Td (Acme Technologies - Cloud Operations Runbook) Tj ET
+0.294 0.333 0.388 rg
+BT /F1 11.0 Tf 266.4 464.0 Td (Version: 2026.1) Tj ET
+0.294 0.333 0.388 rg
+BT /F1 11.0 Tf 203.0 446.0 Td (Document owner: Reliability Engineering) Tj ET
+0.294 0.333 0.388 rg
+BT /F1 11.0 Tf 224.2 428.0 Td (Effective date: January 1, 2026) Tj ET
+0.294 0.333 0.388 rg
+BT /F1 9.0 Tf 148.3 386.0 Td (Internal enterprise knowledge base document for LoreForge demonstrations.) Tj ET
+endstream
+endobj
+6 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 5 0 R >>
+endobj
+7 0 obj
+<< /Length 4588 >>
+stream
+0.82 0.86 0.91 RG 0.8 w 58 724 m 554 724 l S
+0.82 0.86 0.91 RG 0.8 w 58 52 m 554 52 l S
+0.35 0.39 0.45 rg
+BT /F1 8.5 Tf 58 736 Td (Acme Technologies - Cloud Operations Runbook) Tj ET
+BT /F1 8 Tf 58 37 Td (Acme Technologies Internal) Tj ET
+BT /F1 8 Tf 507.8 37 Td (Page 2 of 4) Tj ET
+0.090 0.125 0.200 rg
+BT /F2 14.5 Tf 58.0 706.0 Td (Table of Contents) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.0 Tf 62.0 684.0 Td (1. Infrastructure Overview) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.0 Tf 62.0 671.0 Td (2. Health Checks) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.0 Tf 62.0 658.0 Td (3. Readiness Checks) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.0 Tf 62.0 645.0 Td (4. Monitoring) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.0 Tf 62.0 632.0 Td (5. Alerting) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.0 Tf 62.0 619.0 Td (6. Backups) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.0 Tf 62.0 606.0 Td (7. Disaster Recovery) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.0 Tf 62.0 593.0 Td (8. Maintenance Windows) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.0 Tf 62.0 580.0 Td (9. Operational Change Control) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.0 Tf 62.0 567.0 Td (10. Related Documents) Tj ET
+0.090 0.125 0.200 rg
+BT /F2 14.5 Tf 58.0 554.0 Td (1. Infrastructure Overview) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 532.0 Td (Acme Technologies production services run on managed cloud infrastructure with separated) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 518.0 Td (application, database, and provider-integration layers. Services should be deployed through) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 504.0 Td (approved pipelines and configured through environment variables or managed secret stores.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 486.0 Td (The Engineering Handbook defines deployment approval requirements. The Information Security) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 472.0 Td (Policy defines encryption, access control, and credential handling requirements. The) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 458.0 Td (Incident Response Playbook defines escalation when infrastructure affects customers or) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 444.0 Td (security posture.) Tj ET
+0.090 0.125 0.200 rg
+BT /F2 14.5 Tf 58.0 426.0 Td (2. Health Checks) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 404.0 Td (Applications must expose a liveness health endpoint when technically appropriate.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 386.0 Td (Health checks should answer whether the process is alive and able to respond to basic) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 372.0 Td (requests. They should not perform expensive dependency calls.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 354.0 Td (Minimum expectations:) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 336.0 Td (- Endpoint path: `/health` unless an exception is approved.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 323.3 Td (- Response should be fast and deterministic.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 310.6 Td (- Response must not expose secrets, internal paths, provider payloads, or stack) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 297.9 Td (  traces.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 285.2 Td (- Health failures should trigger service restart only when restart is a safe) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 272.5 Td (  remediation.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 259.8 Td (Health does not prove that a service is ready to receive production traffic.) Tj ET
+0.090 0.125 0.200 rg
+BT /F2 14.5 Tf 58.0 241.8 Td (3. Readiness Checks) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 219.8 Td (Applications that require startup initialization must expose a readiness endpoint.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 201.8 Td (Readiness should answer whether the application completed required startup work and can) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 187.8 Td (safely serve traffic.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 169.8 Td (Minimum expectations:) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 151.8 Td (- Endpoint path: `/ready` unless an exception is approved.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 139.1 Td (- Return success only after required warm-up completes.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 126.4 Td (- Return unavailable while startup work is incomplete.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 113.7 Td (- Do not perform unnecessary live database, provider, or model calls inside the) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 101.0 Td (  readiness request path.) Tj ET
+endstream
+endobj
+8 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 7 0 R >>
+endobj
+9 0 obj
+<< /Length 4637 >>
+stream
+0.82 0.86 0.91 RG 0.8 w 58 724 m 554 724 l S
+0.82 0.86 0.91 RG 0.8 w 58 52 m 554 52 l S
+0.35 0.39 0.45 rg
+BT /F1 8.5 Tf 58 736 Td (Acme Technologies - Cloud Operations Runbook) Tj ET
+BT /F1 8 Tf 58 37 Td (Acme Technologies Internal) Tj ET
+BT /F1 8 Tf 507.8 37 Td (Page 3 of 4) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 706.0 Td (- Mark readiness false before shutdown cleanup completes.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 693.3 Td (Examples of startup work include database connection setup, migration validation, provider) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 679.3 Td (configuration validation, local model warm-up, and cache initialization.) Tj ET
+0.090 0.125 0.200 rg
+BT /F2 14.5 Tf 58.0 661.3 Td (4. Monitoring) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 639.3 Td (Production services must provide enough visibility to distinguish user error, application) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 625.3 Td (defects, infrastructure failures, and provider outages.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 607.3 Td (Monitoring should include:) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 589.3 Td (- Request count by route and status family.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 576.6 Td (- Request duration.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 563.9 Td (- Error count by safe error category.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 551.2 Td (- Startup and shutdown events.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 538.5 Td (- Dependency initialization duration.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 525.8 Td (- Background job failures where applicable.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 513.1 Td (- Provider retry and exhaustion events.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 500.4 Td (Metric labels must be bounded. Do not use customer names, document names, prompts, email) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 486.4 Td (addresses, request bodies, or raw exception messages as metric labels.) Tj ET
+0.090 0.125 0.200 rg
+BT /F2 14.5 Tf 58.0 468.4 Td (5. Alerting) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 446.4 Td (Alerts should be actionable. Every alert must have an owner, severity, routing path, and) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 432.4 Td (response note.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 414.4 Td (Recommended alert conditions:) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 396.4 Td (- Production service unavailable.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 383.7 Td (- Readiness remains false after expected startup window.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 371.0 Td (- Error rate exceeds threshold for critical routes.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 358.3 Td (- Latency exceeds threshold for customer-facing routes.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 345.6 Td (- Database backup failure.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 332.9 Td (- Database replication lag or storage pressure.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 320.2 Td (- Provider failure rate exceeds threshold.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 307.5 Td (Alert severity should follow the Incident Response Playbook. A critical customer outage or) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 293.5 Td (confirmed data exposure must be treated as SEV-1.) Tj ET
+0.090 0.125 0.200 rg
+BT /F2 14.5 Tf 58.0 275.5 Td (6. Backups) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 253.5 Td (Production databases must be backed up automatically.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 235.5 Td (Backup policy:) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 217.5 Td (- Full database backups at least daily.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 204.8 Td (- Point-in-time recovery for production transactional data where supported.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 192.1 Td (- Backup encryption at rest.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 179.4 Td (- Backup access restricted to reliability and security owners.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 166.7 Td (- Restore test at least quarterly.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 154.0 Td (- Retention period of 35 days unless contract or regulation requires longer.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 141.3 Td (Backup failures for production databases are SEV-2 unless data loss is confirmed or customer) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 127.3 Td (impact is active, in which case severity may be raised.) Tj ET
+0.090 0.125 0.200 rg
+BT /F2 14.5 Tf 58.0 109.3 Td (7. Disaster Recovery) Tj ET
+endstream
+endobj
+10 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 9 0 R >>
+endobj
+11 0 obj
+<< /Length 4353 >>
+stream
+0.82 0.86 0.91 RG 0.8 w 58 724 m 554 724 l S
+0.82 0.86 0.91 RG 0.8 w 58 52 m 554 52 l S
+0.35 0.39 0.45 rg
+BT /F1 8.5 Tf 58 736 Td (Acme Technologies - Cloud Operations Runbook) Tj ET
+BT /F1 8 Tf 58 37 Td (Acme Technologies Internal) Tj ET
+BT /F1 8 Tf 507.8 37 Td (Page 4 of 4) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 706.0 Td (Disaster recovery planning must define recovery point objective, recovery time objective,) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 692.0 Td (owner, and validation procedure for each production service.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 674.0 Td (Minimum recovery expectations:) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 656.0 Td (- Documented restore process.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 643.3 Td (- Known dependencies and provider assumptions.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 630.6 Td (- Validated backup restore procedure.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 617.9 Td (- Configuration and secret restoration plan.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 605.2 Td (- Customer communication plan for extended outage.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 592.5 Td (- Post-recovery data integrity checks.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 579.8 Td (Systems that depend on uploaded source files must define durable object storage or another) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 565.8 Td (approved rebuild source. Metadata and derived chunks alone are not sufficient for every) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 551.8 Td (rebuild scenario.) Tj ET
+0.090 0.125 0.200 rg
+BT /F2 14.5 Tf 58.0 533.8 Td (8. Maintenance Windows) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 511.8 Td (Planned maintenance is required when a change may affect customer availability, data) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 497.8 Td (integrity, or production access.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 479.8 Td (Maintenance window requirements:) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 461.8 Td (- Change owner.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 449.1 Td (- Customer impact statement.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 436.4 Td (- Start and end time.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 423.7 Td (- Rollback plan.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 411.0 Td (- Communication owner.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 398.3 Td (- Verification checklist.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 385.6 Td (- Incident escalation path.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 372.9 Td (Emergency maintenance during an active incident follows the Incident Response Playbook.) Tj ET
+0.090 0.125 0.200 rg
+BT /F2 14.5 Tf 58.0 354.9 Td (9. Operational Change Control) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 332.9 Td (Operational changes must be reviewable and reversible when practical.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 314.9 Td (Changes requiring explicit approval:) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 296.9 Td (- Production database migrations.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 284.2 Td (- Secret rotation affecting production services.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 271.5 Td (- Network access changes.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 258.8 Td (- Backup configuration changes.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 246.1 Td (- Provider model or API configuration changes.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 233.4 Td (- Changes to health, readiness, authentication, or authorization behavior.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 220.7 Td (After deployment, owners must verify health, readiness, expected logs, and key user flows.) Tj ET
+0.090 0.125 0.200 rg
+BT /F2 14.5 Tf 58.0 202.7 Td (10. Related Documents) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 180.7 Td (Use this runbook with:) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 162.7 Td (- Acme Technologies - Incident Response Playbook.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 150.0 Td (- Acme Technologies - Engineering Handbook.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 137.3 Td (- Acme Technologies - Information Security Policy.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 124.6 Td (- Acme Technologies - Employee Handbook.) Tj ET
+endstream
+endobj
+12 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 11 0 R >>
+endobj
+xref
+0 13
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000141 00000 n 
+0000000211 00000 n 
+0000000286 00000 n 
+0000001119 00000 n 
+0000001255 00000 n 
+0000005895 00000 n 
+0000006031 00000 n 
+0000010720 00000 n 
+0000010857 00000 n 
+0000015263 00000 n 
+trailer
+<< /Size 13 /Root 1 0 R >>
+startxref
+15401
+%%EOF

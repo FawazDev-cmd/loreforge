@@ -1,23 +1,20 @@
 import logging
-from dataclasses import replace
 from uuid import UUID
 
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 
 from loreforge.application import create_application_container
-from loreforge.database import DatabaseRuntime
 from loreforge.main import create_app
 from loreforge.observability import current_request_id, current_user_id
 from loreforge.settings import load_settings
+from loreforge.testing import default_test_settings
 
 REQUEST_ID = UUID("00000000-0000-0000-0000-00000000a001")
 USER_ID = UUID("00000000-0000-0000-0000-00000000b001")
 
 
 def test_request_id_header_is_preserved_and_context_is_reset() -> None:
-    application = create_app()
+    application = create_app(settings=default_test_settings())
 
     with TestClient(application) as client:
         response = client.get("/health", headers={"X-Request-ID": str(REQUEST_ID)})
@@ -29,7 +26,7 @@ def test_request_id_header_is_preserved_and_context_is_reset() -> None:
 
 
 def test_invalid_request_id_header_is_replaced() -> None:
-    application = create_app()
+    application = create_app(settings=default_test_settings())
 
     with TestClient(application) as client:
         response = client.get("/health", headers={"X-Request-ID": "not-a-uuid"})
@@ -40,7 +37,7 @@ def test_invalid_request_id_header_is_replaced() -> None:
 
 
 def test_http_request_metrics_use_normalized_low_cardinality_labels() -> None:
-    container = create_application_container()
+    container = create_application_container(settings=default_test_settings())
     application = create_app(container_factory=lambda: container)
 
     with TestClient(application) as client:
@@ -82,7 +79,7 @@ def test_http_request_metrics_use_normalized_low_cardinality_labels() -> None:
 
 
 def test_metrics_endpoint_returns_snapshot_without_request_or_user_labels() -> None:
-    application = create_app()
+    application = create_app(settings=default_test_settings())
 
     with TestClient(application) as client:
         client.get("/health")
@@ -163,33 +160,23 @@ def test_request_logging_omits_credentials_and_content(
     assert records[-1].error_category is None
 
 
-def test_readiness_records_database_health_metrics() -> None:
-    engine = create_engine("sqlite+pysqlite:///:memory:")
-    runtime = DatabaseRuntime(
-        engine=engine,
-        session_factory=sessionmaker(bind=engine, expire_on_commit=False),
+def test_readiness_reads_lifecycle_state_without_database_metrics() -> None:
+    container = create_application_container(settings=default_test_settings())
+    application = create_app(
+        settings=default_test_settings(),
+        container_factory=lambda: container,
     )
-    container = replace(create_application_container(), database=runtime)
-    application = create_app(container_factory=lambda: container)
 
-    try:
-        with TestClient(application) as client:
-            response = client.get("/ready")
-    finally:
-        engine.dispose()
+    with TestClient(application) as client:
+        first = client.get("/ready")
+        second = client.get("/ready")
 
-    assert response.status_code == 200
+    assert first.status_code == 200
+    assert first.json() == {"ready": True}
+    assert second.status_code == 200
+    assert second.json() == {"ready": True}
     snapshot = container.operational_metrics.snapshot().as_dict()
-    counters = {
-        (item["name"], tuple(sorted(item["labels"].items()))): item["value"]
+    assert all(
+        item["name"] != "database_readiness_check_total"
         for item in snapshot["counters"]
-    }
-    assert (
-        counters[
-            (
-                "database_readiness_check_total",
-                (("success", "True"),),
-            )
-        ]
-        == 1
     )

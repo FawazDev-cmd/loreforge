@@ -1,0 +1,43 @@
+flowchart TD
+    F["Frontend"]
+    A1["POST /ask"]
+    A2["Authentication"]
+    A3["Request validation"]
+    A4["AskMeService"]
+    E["ProductionGroundedQueryEngine"]
+
+    Q1["Question validation"]
+    Q2["Query embedding"]
+    Q3["Repository vector search"]
+    Q4["Repository lexical search"]
+    Q5["Reciprocal-rank fusion"]
+    Q6["Reranking"]
+    Q7["Evidence construction"]
+    Q8["Grounded prompt"]
+    Q9["Configured LLM provider"]
+    Q10["Citation extraction and enforcement"]
+    Q11["Validated grounded answer"]
+    Q12["API response"]
+
+    F --> A1 --> A2 --> A3 --> A4 --> E
+    E --> Q1 --> Q2
+    Q2 --> Q3
+    Q2 --> Q4
+    Q3 --> Q5
+    Q4 --> Q5
+    Q5 --> Q6 --> Q7 --> Q8 --> Q9 --> Q10 --> Q11 --> Q12
+
+    AuthFail["401 authentication failure"]
+    ValidationFail["422 request validation"]
+    GroundingFail["502 no valid grounding or citation"]
+    RuntimeFail["503 provider or runtime unavailable"]
+
+    A2 -.-> AuthFail
+    A3 -.-> ValidationFail
+    Q7 -. "no evidence" .-> GroundingFail
+    Q10 -. "citation failure" .-> GroundingFail
+    Q2 -. "provider/runtime failure" .-> RuntimeFail
+    Q9 -. "provider/runtime failure" .-> RuntimeFail
+
+    classDef error fill:#fff7ed,stroke:#f97316,stroke-dasharray: 4 3
+    class AuthFail,ValidationFail,GroundingFail,RuntimeFail error

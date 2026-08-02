@@ -1,0 +1,376 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [6 0 R 8 0 R 10 0 R 12 0 R 14 0 R] /Count 5 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+5 0 obj
+<< /Length 787 >>
+stream
+0.82 0.86 0.91 RG 0.8 w 58 724 m 554 724 l S
+0.82 0.86 0.91 RG 0.8 w 58 52 m 554 52 l S
+0.35 0.39 0.45 rg
+BT /F1 8.5 Tf 58 736 Td (Acme Technologies - Incident Response Playbook) Tj ET
+BT /F1 8 Tf 58 37 Td (Acme Technologies Internal) Tj ET
+BT /F1 8 Tf 507.8 37 Td (Page 1 of 5) Tj ET
+0.090 0.125 0.200 rg
+BT /F2 25.0 Tf 66.0 515.0 Td (Acme Technologies - Incident Response Playbook) Tj ET
+0.294 0.333 0.388 rg
+BT /F1 11.0 Tf 266.4 464.0 Td (Version: 2026.1) Tj ET
+0.294 0.333 0.388 rg
+BT /F1 11.0 Tf 200.4 446.0 Td (Document owner: Security and Reliability) Tj ET
+0.294 0.333 0.388 rg
+BT /F1 11.0 Tf 224.2 428.0 Td (Effective date: January 1, 2026) Tj ET
+0.294 0.333 0.388 rg
+BT /F1 9.0 Tf 148.3 386.0 Td (Internal enterprise knowledge base document for LoreForge demonstrations.) Tj ET
+endstream
+endobj
+6 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 5 0 R >>
+endobj
+7 0 obj
+<< /Length 4497 >>
+stream
+0.82 0.86 0.91 RG 0.8 w 58 724 m 554 724 l S
+0.82 0.86 0.91 RG 0.8 w 58 52 m 554 52 l S
+0.35 0.39 0.45 rg
+BT /F1 8.5 Tf 58 736 Td (Acme Technologies - Incident Response Playbook) Tj ET
+BT /F1 8 Tf 58 37 Td (Acme Technologies Internal) Tj ET
+BT /F1 8 Tf 507.8 37 Td (Page 2 of 5) Tj ET
+0.090 0.125 0.200 rg
+BT /F2 14.5 Tf 58.0 706.0 Td (Table of Contents) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.0 Tf 62.0 684.0 Td (1. Purpose) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.0 Tf 62.0 671.0 Td (2. Severity Definitions) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.0 Tf 62.0 658.0 Td (3. Escalation Matrix) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.0 Tf 62.0 645.0 Td (4. Incident Response Lifecycle) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.0 Tf 62.0 632.0 Td (5. Communication) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.0 Tf 62.0 619.0 Td (6. Recovery) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.0 Tf 62.0 606.0 Td (7. Postmortems) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.0 Tf 62.0 593.0 Td (8. On-Call Responsibilities) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.0 Tf 62.0 580.0 Td (9. Related Documents) Tj ET
+0.090 0.125 0.200 rg
+BT /F2 14.5 Tf 58.0 567.0 Td (1. Purpose) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 545.0 Td (This playbook defines how Acme Technologies detects, escalates, manages, resolves, and) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 531.0 Td (reviews operational and security incidents. It applies to production systems, customer-) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 517.0 Td (impacting internal services, security events, and incidents that may affect confidentiality,) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 503.0 Td (integrity, or availability.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 485.0 Td (Operational checks, readiness behavior, backups, and disaster recovery procedures are) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 471.0 Td (defined in the Acme Technologies Cloud Operations Runbook. Security reporting requirements) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 457.0 Td (are defined in the Acme Technologies Information Security Policy.) Tj ET
+0.090 0.125 0.200 rg
+BT /F2 14.5 Tf 58.0 439.0 Td (2. Severity Definitions) Tj ET
+0.141 0.231 0.325 rg
+BT /F2 11.4 Tf 58.0 417.0 Td (2.1 SEV-1 Critical) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 400.0 Td (A SEV-1 incident is a critical event with major customer impact, active security compromise,) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 386.0 Td (data exposure, complete production outage, or significant regulatory risk.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 368.0 Td (Examples:) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 350.0 Td (- Production platform unavailable for most customers.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 337.3 Td (- Confirmed unauthorized access to customer data.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 324.6 Td (- Loss of production database write capability.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 311.9 Td (- Active credential compromise affecting production systems.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 299.2 Td (SEV-1 incidents require immediate escalation, incident commander assignment, executive) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 285.2 Td (notification, and continuous response until mitigated.) Tj ET
+0.141 0.231 0.325 rg
+BT /F2 11.4 Tf 58.0 267.2 Td (2.2 SEV-2 High) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 250.2 Td (A SEV-2 incident is a serious degradation, partial outage, suspected security exposure, or) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 236.2 Td (failure affecting an important customer segment.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 218.2 Td (Examples:) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 200.2 Td (- Significant increase in API errors.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 187.5 Td (- Failed backups for a production database.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 174.8 Td (- Suspected but unconfirmed unauthorized access.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 162.1 Td (- Degraded retrieval or generation path affecting a major workflow.) Tj ET
+0.141 0.231 0.325 rg
+BT /F2 11.4 Tf 58.0 149.4 Td (2.3 SEV-3 Medium) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 132.4 Td (A SEV-3 incident affects limited users, has a workaround, or presents low immediate risk but) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 118.4 Td (requires coordinated response.) Tj ET
+0.141 0.231 0.325 rg
+BT /F2 11.4 Tf 58.0 100.4 Td (2.4 SEV-4 Low) Tj ET
+endstream
+endobj
+8 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 7 0 R >>
+endobj
+9 0 obj
+<< /Length 4573 >>
+stream
+0.82 0.86 0.91 RG 0.8 w 58 724 m 554 724 l S
+0.82 0.86 0.91 RG 0.8 w 58 52 m 554 52 l S
+0.35 0.39 0.45 rg
+BT /F1 8.5 Tf 58 736 Td (Acme Technologies - Incident Response Playbook) Tj ET
+BT /F1 8 Tf 58 37 Td (Acme Technologies Internal) Tj ET
+BT /F1 8 Tf 507.8 37 Td (Page 3 of 5) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 706.0 Td (A SEV-4 incident is a minor operational issue, documentation error, or non-urgent follow-up) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 692.0 Td (with limited user impact.) Tj ET
+0.090 0.125 0.200 rg
+BT /F2 14.5 Tf 58.0 674.0 Td (3. Escalation Matrix) Tj ET
+0.122 0.161 0.216 rg
+BT /F2 8.7 Tf 58.0 652.0 Td (Severity | Incident Commander | Notify Immediately | Update Cadence) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 8.7 Tf 58.0 637.0 Td (SEV-1 | On-call engineering lead | CTO, Security lead, Customer Success lead, Legal) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 8.7 Tf 58.0 625.0 Td (if data exposure is possible | Every 15 minutes) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 8.7 Tf 58.0 610.0 Td (SEV-2 | Service owner or on-call lead | Engineering manager, Security for security-) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 8.7 Tf 58.0 598.0 Td (related events, Customer Success if customers are affected | Every 30 minutes) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 8.7 Tf 58.0 583.0 Td (SEV-3 | Service owner | Owning team and support channel | Every 2 hours) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 8.7 Tf 58.0 568.0 Td (SEV-4 | Ticket owner | Owning team | As needed) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 553.0 Td (The incident commander owns coordination. The technical lead owns diagnosis and mitigation.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 539.0 Td (Communications owns customer and stakeholder updates.) Tj ET
+0.090 0.125 0.200 rg
+BT /F2 14.5 Tf 58.0 521.0 Td (4. Incident Response Lifecycle) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 499.0 Td (Acme Technologies uses six incident phases.) Tj ET
+0.141 0.231 0.325 rg
+BT /F2 11.4 Tf 58.0 481.0 Td (4.1 Detect) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 464.0 Td (Incidents may be detected by alerts, customer reports, employee reports, monitoring) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 450.0 Td (dashboards, provider status pages, or security tooling.) Tj ET
+0.141 0.231 0.325 rg
+BT /F2 11.4 Tf 58.0 432.0 Td (4.2 Triage) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 415.0 Td (The on-call responder assigns severity, identifies affected systems, confirms whether) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 401.0 Td (customer or security impact exists, and creates an incident channel.) Tj ET
+0.141 0.231 0.325 rg
+BT /F2 11.4 Tf 58.0 383.0 Td (4.3 Contain) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 366.0 Td (The team limits blast radius. Containment may include disabling a feature, revoking) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 352.0 Td (credentials, scaling capacity, pausing deployments, blocking traffic, or isolating a system.) Tj ET
+0.141 0.231 0.325 rg
+BT /F2 11.4 Tf 58.0 334.0 Td (4.4 Mitigate) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 317.0 Td (The team restores acceptable service or reduces risk. Mitigation may include rollback,) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 303.0 Td (failover, hotfix, provider workaround, configuration rollback, or manual customer support) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 289.0 Td (process.) Tj ET
+0.141 0.231 0.325 rg
+BT /F2 11.4 Tf 58.0 271.0 Td (4.5 Recover) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 254.0 Td (The team verifies system health, data integrity, backlog processing, and customer-facing) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 240.0 Td (behavior. Follow the Cloud Operations Runbook for health checks, readiness checks, backup) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 226.0 Td (validation, and recovery verification.) Tj ET
+0.141 0.231 0.325 rg
+BT /F2 11.4 Tf 58.0 208.0 Td (4.6 Review) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 191.0 Td (The team completes a postmortem for SEV-1, SEV-2, and recurring SEV-3 incidents.) Tj ET
+0.090 0.125 0.200 rg
+BT /F2 14.5 Tf 58.0 173.0 Td (5. Communication) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 151.0 Td (Incident communication must be timely, factual, and concise.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 133.0 Td (Internal updates should include:) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 115.0 Td (- Current severity.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 102.3 Td (- Customer impact.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 89.6 Td (- Systems affected.) Tj ET
+endstream
+endobj
+10 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 9 0 R >>
+endobj
+11 0 obj
+<< /Length 4614 >>
+stream
+0.82 0.86 0.91 RG 0.8 w 58 724 m 554 724 l S
+0.82 0.86 0.91 RG 0.8 w 58 52 m 554 52 l S
+0.35 0.39 0.45 rg
+BT /F1 8.5 Tf 58 736 Td (Acme Technologies - Incident Response Playbook) Tj ET
+BT /F1 8 Tf 58 37 Td (Acme Technologies Internal) Tj ET
+BT /F1 8 Tf 507.8 37 Td (Page 4 of 5) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 706.0 Td (- Current hypothesis.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 693.3 Td (- Mitigation underway.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 680.6 Td (- Next update time.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 667.9 Td (External customer communication must be approved by Customer Success and Legal when data) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 653.9 Td (exposure, contractual commitments, or regulatory reporting may apply.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 635.9 Td (Do not speculate about root cause before evidence is available. Do not include secrets,) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 621.9 Td (customer document contents, internal credentials, or vulnerability details in broad) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 607.9 Td (channels.) Tj ET
+0.090 0.125 0.200 rg
+BT /F2 14.5 Tf 58.0 589.9 Td (6. Recovery) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 567.9 Td (Before an incident is resolved, the incident commander must confirm:) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 549.9 Td (- Primary customer impact has ended.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 537.2 Td (- Error rates and latency returned to acceptable range.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 524.5 Td (- `/health` and `/ready` checks pass for affected services where applicable.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 511.8 Td (- Backlogs are draining or have been cleared.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 499.1 Td (- Data integrity has been assessed.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 486.4 Td (- Temporary access or emergency credentials are revoked.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 473.7 Td (- Monitoring is in place for recurrence.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 461.0 Td (Recovery steps for databases, backups, and maintenance windows are defined in the Cloud) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 447.0 Td (Operations Runbook.) Tj ET
+0.090 0.125 0.200 rg
+BT /F2 14.5 Tf 58.0 429.0 Td (7. Postmortems) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 407.0 Td (Postmortems are required for SEV-1, SEV-2, and recurring SEV-3 incidents. They must be) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 393.0 Td (completed within five business days.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 375.0 Td (A postmortem must include:) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 357.0 Td (- Summary.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 344.3 Td (- Timeline.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 331.6 Td (- Customer impact.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 318.9 Td (- Root cause.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 306.2 Td (- Detection source.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 293.5 Td (- What worked well.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 280.8 Td (- What made response harder.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 268.1 Td (- Corrective actions with owners and due dates.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 255.4 Td (- Follow-up validation plan.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 242.7 Td (Postmortems are blameless. The goal is to improve systems and response quality, not assign) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 228.7 Td (personal blame.) Tj ET
+0.090 0.125 0.200 rg
+BT /F2 14.5 Tf 58.0 210.7 Td (8. On-Call Responsibilities) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 188.7 Td (On-call responders must:) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 170.7 Td (- Acknowledge pages within five minutes.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 158.0 Td (- Triage severity and customer impact.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 145.3 Td (- Escalate when they lack access, expertise, or confidence.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 132.6 Td (- Start an incident channel for SEV-1 and SEV-2 events.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 119.9 Td (- Preserve relevant logs and timelines.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 107.2 Td (- Avoid risky production changes without commander approval.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 94.5 Td (Employees outside the on-call rotation should report urgent production or security concerns) Tj ET
+endstream
+endobj
+12 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 11 0 R >>
+endobj
+13 0 obj
+<< /Length 993 >>
+stream
+0.82 0.86 0.91 RG 0.8 w 58 724 m 554 724 l S
+0.82 0.86 0.91 RG 0.8 w 58 52 m 554 52 l S
+0.35 0.39 0.45 rg
+BT /F1 8.5 Tf 58 736 Td (Acme Technologies - Incident Response Playbook) Tj ET
+BT /F1 8 Tf 58 37 Td (Acme Technologies Internal) Tj ET
+BT /F1 8 Tf 507.8 37 Td (Page 5 of 5) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 706.0 Td (through the escalation path rather than directly changing production systems.) Tj ET
+0.090 0.125 0.200 rg
+BT /F2 14.5 Tf 58.0 688.0 Td (9. Related Documents) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 666.0 Td (Use this playbook with:) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 648.0 Td (- Acme Technologies - Cloud Operations Runbook.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 635.3 Td (- Acme Technologies - Information Security Policy.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 622.6 Td (- Acme Technologies - Engineering Handbook.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 609.9 Td (- Acme Technologies - Employee Handbook.) Tj ET
+endstream
+endobj
+14 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 13 0 R >>
+endobj
+xref
+0 15
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000148 00000 n 
+0000000218 00000 n 
+0000000293 00000 n 
+0000001131 00000 n 
+0000001267 00000 n 
+0000005816 00000 n 
+0000005952 00000 n 
+0000010577 00000 n 
+0000010714 00000 n 
+0000015381 00000 n 
+0000015519 00000 n 
+0000016564 00000 n 
+trailer
+<< /Size 15 /Root 1 0 R >>
+startxref
+16702
+%%EOF

@@ -28,10 +28,10 @@ from loreforge.generation.validation_models import (
 from loreforge.indexing import DocumentIndexingService
 from loreforge.main import create_app
 from loreforge.observability import InMemoryMetricsRecorder
-from loreforge.query import ProductionGroundedQueryEngine
 from loreforge.reranking import RerankingRequest, RerankingScore
 from loreforge.retrieval.bm25 import InMemoryBM25Index
 from loreforge.settings import load_settings
+from loreforge.testing import default_test_settings
 from loreforge.vector_index import InMemoryVectorIndex
 
 REQUEST_ID = UUID("00000000-0000-0000-0000-000000000001")
@@ -63,7 +63,7 @@ class CountingContainerFactory:
 
 
 def test_default_composition_creates_application_container() -> None:
-    container = create_application_container()
+    container = create_application_container(settings=default_test_settings())
 
     assert type(container) is ApplicationContainer
     assert type(container.catalog_service) is CatalogService
@@ -75,7 +75,7 @@ def test_default_composition_creates_application_container() -> None:
 
 
 def test_default_askme_service_is_safely_unavailable() -> None:
-    container = create_application_container()
+    container = create_application_container(settings=default_test_settings())
 
     with pytest.raises(AskMeUnavailableError) as exc_info:
         container.askme_service.ask(AskMeRequest(QUESTION))
@@ -135,8 +135,8 @@ def test_unexpected_factory_failure_is_not_hidden() -> None:
 
 
 def test_separate_containers_do_not_share_catalog_state() -> None:
-    first = create_application_container()
-    second = create_application_container()
+    first = create_application_container(settings=default_test_settings())
+    second = create_application_container(settings=default_test_settings())
 
     first.catalog_service.register_upload(
         document_id=DOCUMENT_ID,
@@ -152,7 +152,9 @@ def test_separate_containers_do_not_share_catalog_state() -> None:
 def test_create_app_stores_container_on_state_and_reuses_services() -> None:
     container = _container()
     factory = CountingContainerFactory(container)
-    application = create_app(container_factory=factory)
+    application = create_app(
+        settings=default_test_settings(), container_factory=factory
+    )
 
     with TestClient(application) as client:
         assert client.get("/health").status_code == 200
@@ -168,8 +170,12 @@ def test_create_app_stores_container_on_state_and_reuses_services() -> None:
 
 
 def test_create_app_instances_are_isolated() -> None:
-    first = create_app(container_factory=create_application_container)
-    second = create_app(container_factory=create_application_container)
+    first = create_app(
+        settings=default_test_settings(), container_factory=create_application_container
+    )
+    second = create_app(
+        settings=default_test_settings(), container_factory=create_application_container
+    )
 
     with TestClient(first) as first_client:
         first_client.post(
@@ -183,7 +189,7 @@ def test_create_app_instances_are_isolated() -> None:
 
 
 def test_default_app_ask_route_remains_unavailable() -> None:
-    application = create_app()
+    application = create_app(settings=default_test_settings())
 
     with TestClient(application) as client:
         response = client.post("/ask", json={"question": QUESTION})
@@ -196,7 +202,9 @@ def test_injected_askme_service_can_answer_through_api() -> None:
     engine = FakeEngine(_validated_answer())
     service = AskMeService(query_engine=engine, request_id_factory=lambda: REQUEST_ID)
     container = _container(askme_service=service)
-    application = create_app(container_factory=lambda: container)
+    application = create_app(
+        settings=default_test_settings(), container_factory=lambda: container
+    )
 
     with TestClient(application) as client:
         response = client.post("/ask", json={"question": QUESTION})
@@ -208,7 +216,7 @@ def test_injected_askme_service_can_answer_through_api() -> None:
 
 
 def test_missing_application_container_fails_safely() -> None:
-    application = create_app()
+    application = create_app(settings=default_test_settings())
 
     with TestClient(application) as client:
         delattr(client.app.state, "container")
@@ -222,7 +230,7 @@ def test_dependency_overrides_do_not_leak_between_apps() -> None:
     first = create_app(
         container_factory=lambda: _container(askme_service=_askme_service())
     )
-    second = create_app()
+    second = create_app(settings=default_test_settings())
 
     with TestClient(first) as first_client:
         assert first_client.post("/ask", json={"question": QUESTION}).status_code == 200
@@ -370,8 +378,10 @@ def test_composition_rejects_invalid_indexing_service_factory_result() -> None:
 
 
 def test_indexing_service_reused_for_app_lifetime() -> None:
-    container = create_application_container()
-    application = create_app(container_factory=lambda: container)
+    container = create_application_container(settings=default_test_settings())
+    application = create_app(
+        settings=default_test_settings(), container_factory=lambda: container
+    )
 
     with TestClient(application) as client:
         first = client.app.state.container.document_indexing_service
@@ -380,50 +390,65 @@ def test_indexing_service_reused_for_app_lifetime() -> None:
     assert first is second is container.document_indexing_service
 
 
-def test_configured_runtime_creates_one_query_engine_and_askme_service() -> None:
+def test_configured_runtime_without_retrieval_repository_keeps_askme_degraded() -> None:
     providers = RuntimeProviders()
-    container = create_application_container(factories=_runtime_factories(providers))
+    container = create_application_container(
+        settings=default_test_settings(),
+        factories=_runtime_factories(providers),
+    )
 
-    assert type(container.query_engine) is ProductionGroundedQueryEngine
+    assert container.query_engine is None
     assert type(container.askme_service) is AskMeService
-    assert container.askme_service._query_engine is container.query_engine
+    with pytest.raises(AskMeUnavailableError):
+        container.askme_service.ask(AskMeRequest(QUESTION))
     assert providers.query_embedder_calls == 1
     assert providers.reranker_calls == 1
     assert providers.llm_calls == 1
 
 
-def test_configured_runtime_reuses_shared_indexes_for_indexing_and_query() -> None:
-    container = create_application_container(factories=_runtime_factories())
+def test_configured_runtime_keeps_indexes_for_indexing_without_query_engine() -> None:
+    container = create_application_container(
+        settings=default_test_settings(),
+        factories=_runtime_factories(),
+    )
 
     assert container.document_indexing_service._vector_index is container.vector_index
     assert container.document_indexing_service._lexical_index is container.lexical_index
-    assert container.query_engine._semantic_retriever is container.vector_index
-    assert container.query_engine._lexical_retriever is container.lexical_index
+    assert container.query_engine is None
 
 
-def test_configured_askme_route_uses_shared_index_state() -> None:
-    container = create_application_container(factories=_runtime_factories())
+def test_configured_askme_route_remains_degraded_without_retrieval_repository() -> None:
+    container = create_application_container(
+        settings=default_test_settings(),
+        factories=_runtime_factories(),
+    )
     _add_runtime_chunk(container)
-    application = create_app(container_factory=lambda: container)
+    application = create_app(
+        settings=default_test_settings(),
+        container_factory=lambda: container,
+    )
 
     with TestClient(application) as client:
         response = client.post("/ask", json={"question": QUESTION})
 
-    assert response.status_code == 200
-    body = response.json()
-    assert body["question"] == QUESTION
-    assert body["answer"] == ANSWER
-    assert [citation["citation_id"] for citation in body["citations"]] == ["S1"]
-    assert body["citations"][0]["chunk_id"] == str(CHUNK_ID)
+    assert response.status_code == 503
+    assert response.json() == {"detail": "AskMe is temporarily unavailable."}
 
 
-def test_runtime_application_instances_have_isolated_indexes_and_engines() -> None:
-    first = create_application_container(factories=_runtime_factories())
-    second = create_application_container(factories=_runtime_factories())
+def test_runtime_application_instances_have_isolated_indexes() -> None:
+    first = create_application_container(
+        settings=default_test_settings(),
+        factories=_runtime_factories(),
+    )
+    second = create_application_container(
+        settings=default_test_settings(),
+        factories=_runtime_factories(),
+    )
 
     _add_runtime_chunk(first)
 
-    assert first.query_engine is not second.query_engine
+    assert first.query_engine is None
+    assert second.query_engine is None
     assert first.askme_service is not second.askme_service
     assert first.vector_index is not second.vector_index
     assert first.lexical_index is not second.lexical_index
@@ -546,16 +571,20 @@ def _indexing_service(
     )
 
 
-def test_configured_runtime_uses_container_metrics_recorder() -> None:
-    container = create_application_container(factories=_runtime_factories())
+def test_degraded_runtime_records_no_query_observation() -> None:
+    container = create_application_container(
+        settings=default_test_settings(),
+        factories=_runtime_factories(),
+    )
 
-    assert container.query_engine is not None
-    assert container.query_engine._metrics_recorder is container.metrics_recorder
+    assert container.query_engine is None
+    with pytest.raises(AskMeUnavailableError):
+        container.askme_service.ask(AskMeRequest(QUESTION))
     assert container.metrics_recorder.snapshot() == ()
 
 
 def test_default_degraded_askme_records_no_query_observation() -> None:
-    container = create_application_container()
+    container = create_application_container(settings=default_test_settings())
 
     with pytest.raises(AskMeUnavailableError):
         container.askme_service.ask(AskMeRequest(QUESTION))
@@ -564,14 +593,18 @@ def test_default_degraded_askme_records_no_query_observation() -> None:
 
 
 def test_application_instance_metrics_recorders_are_isolated() -> None:
-    first = create_application_container(factories=_runtime_factories())
-    second = create_application_container(factories=_runtime_factories())
+    first = create_application_container(
+        settings=default_test_settings(),
+        factories=_runtime_factories(),
+    )
+    second = create_application_container(
+        settings=default_test_settings(),
+        factories=_runtime_factories(),
+    )
 
     assert first.metrics_recorder is not second.metrics_recorder
-    assert first.query_engine is not None
-    assert second.query_engine is not None
-    assert first.query_engine._metrics_recorder is first.metrics_recorder
-    assert second.query_engine._metrics_recorder is second.metrics_recorder
+    assert first.query_engine is None
+    assert second.query_engine is None
     assert first.metrics_recorder.snapshot() == ()
     assert second.metrics_recorder.snapshot() == ()
 
@@ -595,11 +628,7 @@ def test_settings_driven_gemini_document_embedding_provider_is_configured() -> N
     assert container.query_engine is None
 
 
-def test_settings_driven_gemini_query_runtime_uses_configured_providers() -> None:
-    from loreforge.embeddings.gemini import GeminiEmbeddingProvider
-    from loreforge.generation.gemini import GeminiLLMProvider
-    from loreforge.reranking.local import LocalCrossEncoderReranker
-
+def test_settings_driven_gemini_query_runtime_without_database_is_degraded() -> None:
     settings = load_settings(
         {
             "LOREFORGE_QUERY_EMBEDDINGS_PROVIDER": "gemini",
@@ -609,16 +638,15 @@ def test_settings_driven_gemini_query_runtime_uses_configured_providers() -> Non
             "LOREFORGE_GEMINI_EMBEDDING_MODEL": "gemini-embedding-001",
             "LOREFORGE_GEMINI_GENERATION_MODEL": "gemini-2.5-flash",
             "LOREFORGE_LOCAL_RERANKER_MODEL": "local-reranker",
-        }
+        },
+        env_file=None,
     )
 
     container = create_application_container(settings=settings)
 
-    assert type(container.query_engine) is ProductionGroundedQueryEngine
-    assert container.query_engine is not None
-    assert type(container.query_engine._query_embedder) is GeminiEmbeddingProvider
-    assert type(container.query_engine._reranker) is LocalCrossEncoderReranker
-    assert type(container.query_engine._answer_generator) is GeminiLLMProvider
+    assert container.query_engine is None
+    with pytest.raises(AskMeUnavailableError):
+        container.askme_service.ask(AskMeRequest(QUESTION))
 
 
 def test_settings_driven_gemini_query_runtime_requires_reranker() -> None:

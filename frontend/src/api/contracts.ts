@@ -4,8 +4,7 @@ export type HealthResponse = {
 };
 
 export type ReadyResponse = {
-  service: "loreforge";
-  status: "ready" | "not_ready";
+  ready: boolean;
 };
 
 export type DocumentStatus = "UPLOADED" | "INGESTING" | "READY" | "FAILED" | "DELETED";

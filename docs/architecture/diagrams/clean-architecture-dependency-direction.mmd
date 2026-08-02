@@ -1,0 +1,45 @@
+flowchart TB
+    subgraph Presentation["Presentation"]
+        FastAPI["FastAPI routes<br/>api, main"]
+        Frontend["React frontend"]
+        Transport["HTTP transport models"]
+    end
+
+    subgraph Application["Application"]
+        Container["ApplicationContainer"]
+        Composition["Composition root"]
+        Services["CatalogService<br/>DocumentIndexingService<br/>AskMeService"]
+        QueryEngine["ProductionGroundedQueryEngine"]
+    end
+
+    subgraph Domain["Domain And Contracts"]
+        Models["Immutable domain models"]
+        Protocols["Repository and provider protocols"]
+        Rules["Lifecycle, retrieval, evidence,<br/>citation validation rules"]
+    end
+
+    subgraph Infrastructure["Infrastructure"]
+        Database["SQLAlchemy repositories"]
+        ProviderAdapters["Gemini, OpenRouter,<br/>local model adapters"]
+        InMemory["In-memory indexes and repositories"]
+    end
+
+    Frontend --> FastAPI
+    FastAPI --> Services
+    FastAPI --> Container
+    Services --> Models
+    Services --> Protocols
+    QueryEngine --> Protocols
+    QueryEngine --> Rules
+    Infrastructure -. "implements" .-> Protocols
+    Composition --> Container
+    Composition --> Services
+    Composition --> Infrastructure
+    Container --> Services
+    Container --> QueryEngine
+
+    DomainNote["Domain has no dependency on<br/>FastAPI, SQLAlchemy, provider SDKs, or frontend code"]
+    Domain -.-> DomainNote
+
+    classDef note fill:#f8fafc,stroke:#64748b,stroke-dasharray: 4 3
+    class DomainNote note

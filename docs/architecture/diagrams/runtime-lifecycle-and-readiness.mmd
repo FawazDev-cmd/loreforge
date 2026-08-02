@@ -1,0 +1,34 @@
+flowchart TD
+    S1["create_app()"]
+    S2["Create runtime state<br/>ready = false"]
+    S3["FastAPI lifespan startup"]
+    S4["Create ApplicationContainer"]
+    S5["container.warm_up()"]
+    S6{"Reranker supports warm_up?"}
+    S7["Local CrossEncoder warm-up"]
+    S8["Mark ready"]
+    S9["Serve traffic"]
+    S10["Shutdown begins"]
+    S11["Mark not ready"]
+    S12["container.close()"]
+    S13["Database disposal<br/>when configured"]
+
+    S1 --> S2 --> S3 --> S4 --> S5 --> S6
+    S6 -- "yes" --> S7 --> S8
+    S6 -- "no" --> S8
+    S8 --> S9 --> S10 --> S11 --> S12 --> S13
+
+    subgraph Endpoints["Endpoint Semantics"]
+        H["/health<br/>liveness only"]
+        R1["/ready before warm-up<br/>503 ready=false"]
+        R2["/ready after warm-up<br/>200 ready=true"]
+        R3["/ready performs no DB,<br/>Gemini, reranker, query-engine,<br/>or external checks"]
+    end
+
+    S2 -.-> R1
+    S8 -.-> R2
+    S9 -.-> H
+    R2 -.-> R3
+
+    classDef endpoint fill:#f8fafc,stroke:#64748b,stroke-dasharray: 4 3
+    class H,R1,R2,R3 endpoint

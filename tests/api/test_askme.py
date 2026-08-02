@@ -13,7 +13,8 @@ from loreforge.askme import (
     AskMeUnavailableError,
 )
 from loreforge.catalog import CatalogService, InMemoryCatalogRepository
-from loreforge.main import app
+from loreforge.main import create_app
+from loreforge.testing import default_test_settings
 
 REQUEST_ID = UUID("00000000-0000-0000-0000-000000000001")
 DOCUMENT_ID_1 = UUID("00000000-0000-0000-0000-000000000201")
@@ -45,12 +46,13 @@ class RaisingService:
 @pytest.fixture
 def client() -> Iterator[TestClient]:
     service = CatalogService(InMemoryCatalogRepository())
-    app.dependency_overrides[admin.get_catalog_service] = lambda: service
+    application = create_app(settings=default_test_settings())
+    application.dependency_overrides[admin.get_catalog_service] = lambda: service
     try:
-        with TestClient(app) as test_client:
+        with TestClient(application) as test_client:
             yield test_client
     finally:
-        app.dependency_overrides.clear()
+        application.dependency_overrides.clear()
 
 
 def test_health_endpoint_remains_available(client: TestClient) -> None:
@@ -69,7 +71,7 @@ def test_admin_routes_remain_registered(client: TestClient) -> None:
 
 def test_successful_ask_request(client: TestClient) -> None:
     service = SuccessfulService()
-    app.dependency_overrides[askme.get_askme_service] = lambda: service
+    client.app.dependency_overrides[askme.get_askme_service] = lambda: service
 
     response = client.post("/ask", json={"question": QUESTION})
 
@@ -78,7 +80,9 @@ def test_successful_ask_request(client: TestClient) -> None:
 
 
 def test_response_schema(client: TestClient) -> None:
-    app.dependency_overrides[askme.get_askme_service] = lambda: SuccessfulService()
+    client.app.dependency_overrides[askme.get_askme_service] = lambda: (
+        SuccessfulService()
+    )
 
     response = client.post("/ask", json={"question": QUESTION})
 
@@ -98,7 +102,9 @@ def test_response_schema(client: TestClient) -> None:
 
 
 def test_question_and_answer_preserved(client: TestClient) -> None:
-    app.dependency_overrides[askme.get_askme_service] = lambda: SuccessfulService()
+    client.app.dependency_overrides[askme.get_askme_service] = lambda: (
+        SuccessfulService()
+    )
 
     response = client.post("/ask", json={"question": QUESTION})
 
@@ -112,8 +118,8 @@ def test_citation_ordering_preserved(client: TestClient) -> None:
         _citation("S2", DOCUMENT_ID_2, "shipping-policy.pdf", 5, CHUNK_ID_2),
         _citation("S1", DOCUMENT_ID_1, "refund-policy.pdf", 2, CHUNK_ID_1),
     )
-    app.dependency_overrides[askme.get_askme_service] = lambda: SuccessfulService(
-        _result(citations=citations)
+    client.app.dependency_overrides[askme.get_askme_service] = lambda: (
+        SuccessfulService(_result(citations=citations))
     )
 
     response = client.post("/ask", json={"question": QUESTION})
@@ -125,7 +131,9 @@ def test_citation_ordering_preserved(client: TestClient) -> None:
 
 
 def test_citation_uuid_serialization(client: TestClient) -> None:
-    app.dependency_overrides[askme.get_askme_service] = lambda: SuccessfulService()
+    client.app.dependency_overrides[askme.get_askme_service] = lambda: (
+        SuccessfulService()
+    )
 
     response = client.post("/ask", json={"question": QUESTION})
 
@@ -154,7 +162,7 @@ def test_invalid_json_field_type_returns_422(client: TestClient) -> None:
 
 
 def test_unavailable_service_maps_to_503(client: TestClient) -> None:
-    app.dependency_overrides[askme.get_askme_service] = lambda: RaisingService(
+    client.app.dependency_overrides[askme.get_askme_service] = lambda: RaisingService(
         AskMeUnavailableError("internal provider detail")
     )
 
@@ -165,7 +173,7 @@ def test_unavailable_service_maps_to_503(client: TestClient) -> None:
 
 
 def test_grounding_error_maps_to_502(client: TestClient) -> None:
-    app.dependency_overrides[askme.get_askme_service] = lambda: RaisingService(
+    client.app.dependency_overrides[askme.get_askme_service] = lambda: RaisingService(
         AskMeGroundingError("internal evidence detail")
     )
 
@@ -178,7 +186,7 @@ def test_grounding_error_maps_to_502(client: TestClient) -> None:
 
 
 def test_internal_exception_details_absent(client: TestClient) -> None:
-    app.dependency_overrides[askme.get_askme_service] = lambda: RaisingService(
+    client.app.dependency_overrides[askme.get_askme_service] = lambda: RaisingService(
         AskMeUnavailableError("internal sensitive detail")
     )
 
@@ -197,12 +205,15 @@ def test_default_unconfigured_dependency_returns_503(client: TestClient) -> None
 
 
 def test_dependency_override_cleanup_prevents_test_leakage() -> None:
-    app.dependency_overrides[askme.get_askme_service] = lambda: SuccessfulService()
-    with TestClient(app) as first_client:
+    application = create_app(settings=default_test_settings())
+    application.dependency_overrides[askme.get_askme_service] = lambda: (
+        SuccessfulService()
+    )
+    with TestClient(application) as first_client:
         assert first_client.post("/ask", json={"question": QUESTION}).status_code == 200
-    app.dependency_overrides.clear()
+    application.dependency_overrides.clear()
 
-    with TestClient(app) as second_client:
+    with TestClient(application) as second_client:
         response = second_client.post("/ask", json={"question": QUESTION})
 
     assert response.status_code == 503

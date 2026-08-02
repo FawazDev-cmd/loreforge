@@ -115,6 +115,32 @@ class FakeLexicalRetriever:
         )
 
 
+class FakeRetrievalRepository:
+    def __init__(
+        self,
+        semantic: FakeSemanticRetriever,
+        lexical: FakeLexicalRetriever,
+    ) -> None:
+        self.semantic = semantic
+        self.lexical = lexical
+
+    def vector_search(
+        self,
+        *,
+        query_vector: tuple[float, ...],
+        top_k: int,
+        filters: object = None,
+    ) -> tuple[VectorSearchResult, ...]:
+        return self.semantic.search(query_vector=query_vector, top_k=top_k)
+
+    def lexical_search(
+        self,
+        request: LexicalSearchRequest,
+        filters: object = None,
+    ) -> LexicalSearchResponse:
+        return self.lexical.search(request)
+
+
 class FakeRerankerProvider:
     def __init__(self, call_log: list[str], fail: bool = False) -> None:
         self.call_log = call_log
@@ -158,6 +184,7 @@ class EngineParts:
         self.semantic = FakeSemanticRetriever(self.call_log, fail=fail_at == "semantic")
         self.lexical = FakeLexicalRetriever(self.call_log, fail=fail_at == "lexical")
         self.reranker = FakeRerankerProvider(self.call_log, fail=fail_at == "reranker")
+        self.retrieval_repository = FakeRetrievalRepository(self.semantic, self.lexical)
         self.generator = FakeGenerator(self.call_log, fail=fail_at == "generator")
         self.hybrid_inputs: list[
             tuple[tuple[VectorSearchResult, ...], tuple[LexicalSearchResult, ...]]
@@ -177,8 +204,7 @@ class EngineParts:
     ) -> ProductionGroundedQueryEngine:
         return ProductionGroundedQueryEngine(
             query_embedder=self.embedder,
-            semantic_retriever=self.semantic,  # type: ignore[arg-type]
-            lexical_retriever=self.lexical,  # type: ignore[arg-type]
+            retrieval_repository=self.retrieval_repository,
             hybrid_fuser=self.hybrid_fuser,
             reranker=self.reranker,
             reranking_stage=self.reranking_stage,

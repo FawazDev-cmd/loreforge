@@ -1,0 +1,46 @@
+flowchart LR
+    Frontend["React/Vite Frontend"]
+    Backend["FastAPI Backend"]
+    Routes["HTTP Routes<br/>health, ready, metrics, documents, admin, ask"]
+    Container["ApplicationContainer<br/>Composition Root"]
+    UseCases["Application Services<br/>Catalog, Indexing, AskMe"]
+    Repositories["Repository Protocols"]
+    Providers["Provider Protocols"]
+
+    Frontend -- "HTTP + Bearer API key" --> Backend
+    Backend --> Routes
+    Routes --> Container
+    Container --> UseCases
+    UseCases --> Repositories
+    UseCases --> Providers
+
+    subgraph Database["Optional Persistence"]
+        SqlAlchemy["SQLAlchemy Adapters"]
+        Postgres[("PostgreSQL<br/>durable metadata and retrieval")]
+        SqlAlchemy --> Postgres
+    end
+
+    Repositories --> SqlAlchemy
+
+    subgraph ProviderChoices["Configurable Providers"]
+        Embeddings["Embedding Provider<br/>disabled, local, Gemini"]
+        Reranker["Reranker Provider<br/>disabled, local CrossEncoder"]
+        LLM["LLM Provider<br/>disabled, Gemini, OpenRouter"]
+    end
+
+    Providers --> Embeddings
+    Providers --> Reranker
+    Providers --> LLM
+
+    Gemini["Gemini API"]
+    OpenRouter["OpenRouter API"]
+    HFCache["Local Hugging Face<br/>model cache"]
+
+    Embeddings -. "Gemini when configured" .-> Gemini
+    LLM -. "Gemini when configured" .-> Gemini
+    LLM -. "OpenRouter when configured" .-> OpenRouter
+    Embeddings -. "local model when configured" .-> HFCache
+    Reranker -. "local CrossEncoder" .-> HFCache
+
+    classDef optional fill:#f8fafc,stroke:#64748b,stroke-dasharray: 4 3
+    class Gemini,OpenRouter,HFCache optional

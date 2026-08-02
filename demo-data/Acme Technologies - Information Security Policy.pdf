@@ -1,0 +1,396 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [6 0 R 8 0 R 10 0 R 12 0 R 14 0 R] /Count 5 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+5 0 obj
+<< /Length 773 >>
+stream
+0.82 0.86 0.91 RG 0.8 w 58 724 m 554 724 l S
+0.82 0.86 0.91 RG 0.8 w 58 52 m 554 52 l S
+0.35 0.39 0.45 rg
+BT /F1 8.5 Tf 58 736 Td (Acme Technologies - Information Security Policy) Tj ET
+BT /F1 8 Tf 58 37 Td (Acme Technologies Internal) Tj ET
+BT /F1 8 Tf 507.8 37 Td (Page 1 of 5) Tj ET
+0.090 0.125 0.200 rg
+BT /F2 25.0 Tf 66.0 515.0 Td (Acme Technologies - Information Security Policy) Tj ET
+0.294 0.333 0.388 rg
+BT /F1 11.0 Tf 266.4 464.0 Td (Version: 2026.1) Tj ET
+0.294 0.333 0.388 rg
+BT /F1 11.0 Tf 242.6 446.0 Td (Document owner: Security) Tj ET
+0.294 0.333 0.388 rg
+BT /F1 11.0 Tf 224.2 428.0 Td (Effective date: January 1, 2026) Tj ET
+0.294 0.333 0.388 rg
+BT /F1 9.0 Tf 148.3 386.0 Td (Internal enterprise knowledge base document for LoreForge demonstrations.) Tj ET
+endstream
+endobj
+6 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 5 0 R >>
+endobj
+7 0 obj
+<< /Length 4513 >>
+stream
+0.82 0.86 0.91 RG 0.8 w 58 724 m 554 724 l S
+0.82 0.86 0.91 RG 0.8 w 58 52 m 554 52 l S
+0.35 0.39 0.45 rg
+BT /F1 8.5 Tf 58 736 Td (Acme Technologies - Information Security Policy) Tj ET
+BT /F1 8 Tf 58 37 Td (Acme Technologies Internal) Tj ET
+BT /F1 8 Tf 507.8 37 Td (Page 2 of 5) Tj ET
+0.090 0.125 0.200 rg
+BT /F2 14.5 Tf 58.0 706.0 Td (Table of Contents) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.0 Tf 62.0 684.0 Td (1. Purpose and Scope) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.0 Tf 62.0 671.0 Td (2. Data Classification) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.0 Tf 62.0 658.0 Td (3. Password Requirements) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.0 Tf 62.0 645.0 Td (4. Multi-Factor Authentication) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.0 Tf 62.0 632.0 Td (5. Access Control) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.0 Tf 62.0 619.0 Td (6. Encryption Standards) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.0 Tf 62.0 606.0 Td (7. Device Security) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.0 Tf 62.0 593.0 Td (8. Incident Reporting) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.0 Tf 62.0 580.0 Td (9. Third-Party Access) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.0 Tf 62.0 567.0 Td (10. Engineering Security Controls) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.0 Tf 62.0 554.0 Td (11. Related Documents) Tj ET
+0.090 0.125 0.200 rg
+BT /F2 14.5 Tf 58.0 541.0 Td (1. Purpose and Scope) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 519.0 Td (This policy defines minimum security requirements for Acme Technologies employees,) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 505.0 Td (contractors, systems, repositories, cloud accounts, and internal services. It applies to all) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 491.0 Td (company data, customer data, source code, production systems, and business applications.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 473.0 Td (The policy supports the workplace expectations in the Acme Technologies Employee Handbook) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 459.0 Td (and the engineering controls in the Acme Technologies Engineering Handbook.) Tj ET
+0.090 0.125 0.200 rg
+BT /F2 14.5 Tf 58.0 441.0 Td (2. Data Classification) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 419.0 Td (Acme Technologies uses four data classes.) Tj ET
+0.141 0.231 0.325 rg
+BT /F2 11.4 Tf 58.0 401.0 Td (2.1 Public) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 384.0 Td (Information approved for public release, including published marketing pages, public) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 370.0 Td (documentation, and open-source notices.) Tj ET
+0.141 0.231 0.325 rg
+BT /F2 11.4 Tf 58.0 352.0 Td (2.2 Internal) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 335.0 Td (Information intended for Acme Technologies personnel and approved contractors. Examples) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 321.0 Td (include internal roadmaps, ordinary project notes, and non-sensitive process documentation.) Tj ET
+0.141 0.231 0.325 rg
+BT /F2 11.4 Tf 58.0 303.0 Td (2.3 Confidential) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 286.0 Td (Information that could harm Acme Technologies, customers, employees, or partners if) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 272.0 Td (disclosed. Examples include customer configurations, security findings, non-public financial) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 258.0 Td (information, employee records, incident notes, and private architecture diagrams.) Tj ET
+0.141 0.231 0.325 rg
+BT /F2 11.4 Tf 58.0 240.0 Td (2.4 Restricted) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 223.0 Td (Highly sensitive information requiring strict access control. Examples include production) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 209.0 Td (credentials, signing keys, regulated customer data, privileged audit logs, and vulnerability) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 195.0 Td (exploit details.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 177.0 Td (Confidential and Restricted data must not be copied into unapproved AI tools, personal) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 163.0 Td (storage, personal email, or unmanaged devices.) Tj ET
+0.090 0.125 0.200 rg
+BT /F2 14.5 Tf 58.0 145.0 Td (3. Password Requirements) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 123.0 Td (All company passwords must meet these requirements:) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 105.0 Td (- Minimum length: 14 characters.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 92.3 Td (- Unique per system unless single sign-on is used.) Tj ET
+endstream
+endobj
+8 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 7 0 R >>
+endobj
+9 0 obj
+<< /Length 4929 >>
+stream
+0.82 0.86 0.91 RG 0.8 w 58 724 m 554 724 l S
+0.82 0.86 0.91 RG 0.8 w 58 52 m 554 52 l S
+0.35 0.39 0.45 rg
+BT /F1 8.5 Tf 58 736 Td (Acme Technologies - Information Security Policy) Tj ET
+BT /F1 8 Tf 58 37 Td (Acme Technologies Internal) Tj ET
+BT /F1 8 Tf 507.8 37 Td (Page 3 of 5) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 706.0 Td (- Generated and stored in an approved password manager.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 693.3 Td (- Not based on employee names, company names, project names, dates, dictionary) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 680.6 Td (  phrases, or reused patterns.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 667.9 Td (- Not shared through chat, email, tickets, documents, screenshots, shell history, or) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 655.2 Td (  source code.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 642.5 Td (Password rotation requirements:) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 624.5 Td (- Standard employee credentials rotate every 180 days.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 611.8 Td (- Privileged, production, and administrator credentials rotate every 90 days.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 599.1 Td (- Service credentials rotate at least every 90 days unless managed through an) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 586.4 Td (  automated secret rotation system.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 573.7 Td (- Immediate rotation is required after suspected compromise, employee transfer,) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 561.0 Td (  vendor offboarding, or accidental disclosure.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 548.3 Td (Emergency credentials must be stored in the approved vault with named owner, purpose, expiry) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 534.3 Td (date, and access log review.) Tj ET
+0.090 0.125 0.200 rg
+BT /F2 14.5 Tf 58.0 516.3 Td (4. Multi-Factor Authentication) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 494.3 Td (MFA is required for:) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 476.3 Td (- Email and identity accounts.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 463.6 Td (- Source control.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 450.9 Td (- Cloud provider consoles.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 438.2 Td (- Production monitoring and logging tools.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 425.5 Td (- VPN or zero-trust access tools.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 412.8 Td (- Administrative SaaS applications.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 400.1 Td (- Password manager access.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 387.4 Td (Preferred MFA methods are hardware security keys and authenticator applications. SMS-based) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 373.4 Td (MFA is allowed only as a temporary fallback approved by Security.) Tj ET
+0.090 0.125 0.200 rg
+BT /F2 14.5 Tf 58.0 355.4 Td (5. Access Control) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 333.4 Td (Access must follow least privilege. Users receive only the access required for their role) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 319.4 Td (and current project.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 301.4 Td (Access requirements:) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 283.4 Td (- All access must be tied to an individual identity.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 270.7 Td (- Shared user accounts are prohibited.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 258.0 Td (- Production access requires manager approval and Security approval.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 245.3 Td (- Access reviews occur quarterly for production systems and semi-annually for) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 232.6 Td (  standard business systems.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 219.9 Td (- Access must be removed within one business day after role change or termination.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 207.2 Td (Cross-team access to customer data requires documented business justification. The Incident) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 193.2 Td (Response Playbook defines emergency access expectations during SEV-1 and SEV-2 incidents.) Tj ET
+0.090 0.125 0.200 rg
+BT /F2 14.5 Tf 58.0 175.2 Td (6. Encryption Standards) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 153.2 Td (Encryption is required for Confidential and Restricted data.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 135.2 Td (Minimum standards:) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 117.2 Td (- TLS 1.2 or newer for data in transit.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 104.5 Td (- AES-256 or cloud-provider equivalent encryption for data at rest.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 91.8 Td (- Managed key services for production storage where available.) Tj ET
+endstream
+endobj
+10 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 9 0 R >>
+endobj
+11 0 obj
+<< /Length 4441 >>
+stream
+0.82 0.86 0.91 RG 0.8 w 58 724 m 554 724 l S
+0.82 0.86 0.91 RG 0.8 w 58 52 m 554 52 l S
+0.35 0.39 0.45 rg
+BT /F1 8.5 Tf 58 736 Td (Acme Technologies - Information Security Policy) Tj ET
+BT /F1 8 Tf 58 37 Td (Acme Technologies Internal) Tj ET
+BT /F1 8 Tf 507.8 37 Td (Page 4 of 5) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 706.0 Td (- Disk encryption on all company-managed laptops.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 693.3 Td (- Encrypted backups for production databases.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 680.6 Td (Keys must not be committed to source control. Key access must be restricted, logged, and) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 666.6 Td (reviewed. Production deployment pipelines must not print secrets in logs.) Tj ET
+0.090 0.125 0.200 rg
+BT /F2 14.5 Tf 58.0 648.6 Td (7. Device Security) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 626.6 Td (Company work must be performed on company-managed devices unless Security grants an) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 612.6 Td (exception.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 594.6 Td (Required controls:) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 576.6 Td (- Full-disk encryption.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 563.9 Td (- Screen lock after 10 minutes or less.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 551.2 Td (- Endpoint protection.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 538.5 Td (- Operating system security updates within 14 days of release for standard updates) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 525.8 Td (  and 72 hours for critical updates.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 513.1 Td (- Device management enrollment.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 500.4 Td (- Local administrator rights only when approved for a defined need.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 487.7 Td (Lost or stolen devices must be reported immediately. Security may remotely lock or wipe) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 473.7 Td (managed devices.) Tj ET
+0.090 0.125 0.200 rg
+BT /F2 14.5 Tf 58.0 455.7 Td (8. Incident Reporting) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 433.7 Td (Employees must report suspected security incidents immediately through the designated) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 419.7 Td (incident channel or on-call escalation path.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 401.7 Td (Reportable events include:) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 383.7 Td (- Suspected credential compromise.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 371.0 Td (- Lost or stolen company device.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 358.3 Td (- Unauthorized access attempt.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 345.6 Td (- Customer data exposure.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 332.9 Td (- Malware or phishing success.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 320.2 Td (- Production system compromise.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 307.5 Td (- Security control bypass.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 294.8 Td (The Incident Response Playbook defines severity levels, escalation ownership,) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 280.8 Td (communications, recovery, and postmortem requirements.) Tj ET
+0.090 0.125 0.200 rg
+BT /F2 14.5 Tf 58.0 262.8 Td (9. Third-Party Access) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 240.8 Td (Third-party vendors may access company systems only after Security review, business owner) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 226.8 Td (approval, and contract review where required.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 208.8 Td (Vendor access must:) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 190.8 Td (- Be time-bound.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 178.1 Td (- Use individual identities.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 165.4 Td (- Require MFA.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 152.7 Td (- Be limited to approved systems.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 140.0 Td (- Be removed when the engagement ends.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 127.3 Td (- Be reviewed at least quarterly for production or customer-data access.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 114.6 Td (Vendors must not receive production credentials through email, chat, or documents.) Tj ET
+endstream
+endobj
+12 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 11 0 R >>
+endobj
+13 0 obj
+<< /Length 2074 >>
+stream
+0.82 0.86 0.91 RG 0.8 w 58 724 m 554 724 l S
+0.82 0.86 0.91 RG 0.8 w 58 52 m 554 52 l S
+0.35 0.39 0.45 rg
+BT /F1 8.5 Tf 58 736 Td (Acme Technologies - Information Security Policy) Tj ET
+BT /F1 8 Tf 58 37 Td (Acme Technologies Internal) Tj ET
+BT /F1 8 Tf 507.8 37 Td (Page 5 of 5) Tj ET
+0.090 0.125 0.200 rg
+BT /F2 14.5 Tf 58.0 706.0 Td (10. Engineering Security Controls) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 684.0 Td (The Engineering Handbook defines Git workflow, pull request expectations, testing, CI/CD,) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 670.0 Td (logging, monitoring, and production deployment controls. Security requirements that directly) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 656.0 Td (affect engineering include:) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 638.0 Td (- Pull requests must be reviewed before merge.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 625.3 Td (- Secrets must not be committed.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 612.6 Td (- Production deploys require CI success and change approval.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 599.9 Td (- Services must expose health and readiness endpoints when applicable.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 587.2 Td (- Logs must avoid passwords, tokens, personal data, and customer document contents.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 574.5 Td (Security exceptions require a documented risk owner, mitigation plan, and expiration date.) Tj ET
+0.090 0.125 0.200 rg
+BT /F2 14.5 Tf 58.0 556.5 Td (11. Related Documents) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 534.5 Td (This policy should be read with:) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 516.5 Td (- Acme Technologies - Employee Handbook.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 503.8 Td (- Acme Technologies - Engineering Handbook.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 491.1 Td (- Acme Technologies - Incident Response Playbook.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 478.4 Td (- Acme Technologies - Cloud Operations Runbook.) Tj ET
+endstream
+endobj
+14 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 13 0 R >>
+endobj
+xref
+0 15
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000148 00000 n 
+0000000218 00000 n 
+0000000293 00000 n 
+0000001117 00000 n 
+0000001253 00000 n 
+0000005818 00000 n 
+0000005954 00000 n 
+0000010935 00000 n 
+0000011072 00000 n 
+0000015566 00000 n 
+0000015704 00000 n 
+0000017831 00000 n 
+trailer
+<< /Size 15 /Root 1 0 R >>
+startxref
+17969
+%%EOF

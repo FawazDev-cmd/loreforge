@@ -50,7 +50,7 @@ describe("engineering operations panel", () => {
     renderRoute("/admin/system");
 
     expect(await screen.findByText("Service loreforge reports healthy.")).toBeInTheDocument();
-    expect(screen.getByText("Service loreforge reports ready.")).toBeInTheDocument();
+    expect(screen.getByText("Application startup and warm-up completed successfully.")).toBeInTheDocument();
     expect(screen.getByText("Application version")).toBeInTheDocument();
     expect(screen.getAllByText("Not available").length).toBeGreaterThanOrEqual(3);
     expect(screen.getByText("Version is not exposed by the backend API.")).toBeInTheDocument();
@@ -65,7 +65,7 @@ describe("engineering operations panel", () => {
         return jsonResponse({ service: "loreforge", status: "healthy" });
       }
       if (path === "/ready") {
-        return jsonResponse({ service: "loreforge", status: "not_ready" }, { status: 503 });
+        return jsonResponse({ ready: false }, { status: 503 });
       }
       return jsonResponse({ detail: "not found" }, { status: 404 });
     });
@@ -75,10 +75,29 @@ describe("engineering operations panel", () => {
     expect(await screen.findByText("Service loreforge reports healthy.")).toBeInTheDocument();
     expect(screen.getByText("Readiness")).toBeInTheDocument();
     expect(screen.getAllByText("Not available").length).toBeGreaterThanOrEqual(3);
-    expect(screen.getByText("Readiness endpoint is not available.")).toBeInTheDocument();
+    expect(screen.getByText("Application startup or warm-up has not completed.")).toBeInTheDocument();
     expect(screen.queryByText("Unknown")).not.toBeInTheDocument();
     expect(screen.queryByText("undefined")).not.toBeInTheDocument();
     expect(screen.queryByText(/database URL/i)).not.toBeInTheDocument();
+  });
+
+  it("renders readiness retrieval failures with intentional wording", async () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockImplementation(async (url) => {
+      const path = new URL(String(url)).pathname;
+      if (path === "/health") {
+        return jsonResponse({ service: "loreforge", status: "healthy" });
+      }
+      if (path === "/ready") {
+        return jsonResponse({ detail: "not found" }, { status: 404 });
+      }
+      return jsonResponse({ detail: "not found" }, { status: 404 });
+    });
+
+    renderRoute("/admin/system", fetchImpl);
+
+    expect(await screen.findByText("Service loreforge reports healthy.")).toBeInTheDocument();
+    expect(screen.getByText("Readiness status could not be retrieved.")).toBeInTheDocument();
+    expect(screen.queryByText("undefined")).not.toBeInTheDocument();
   });
 
   it("renders metrics snapshot summaries without fake dashboards", async () => {
@@ -130,7 +149,7 @@ function successfulOperationsFetch() {
       return jsonResponse({ service: "loreforge", status: "healthy" });
     }
     if (path === "/ready") {
-      return jsonResponse({ service: "loreforge", status: "ready" });
+      return jsonResponse({ ready: true });
     }
     if (path === "/metrics") {
       return jsonResponse({

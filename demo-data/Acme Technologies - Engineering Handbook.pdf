@@ -1,0 +1,370 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [6 0 R 8 0 R 10 0 R 12 0 R 14 0 R] /Count 5 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+5 0 obj
+<< /Length 762 >>
+stream
+0.82 0.86 0.91 RG 0.8 w 58 724 m 554 724 l S
+0.82 0.86 0.91 RG 0.8 w 58 52 m 554 52 l S
+0.35 0.39 0.45 rg
+BT /F1 8.5 Tf 58 736 Td (Acme Technologies - Engineering Handbook) Tj ET
+BT /F1 8 Tf 58 37 Td (Acme Technologies Internal) Tj ET
+BT /F1 8 Tf 507.8 37 Td (Page 1 of 5) Tj ET
+0.090 0.125 0.200 rg
+BT /F2 25.0 Tf 66.0 515.0 Td (Acme Technologies - Engineering Handbook) Tj ET
+0.294 0.333 0.388 rg
+BT /F1 11.0 Tf 266.4 464.0 Td (Version: 2026.1) Tj ET
+0.294 0.333 0.388 rg
+BT /F1 11.0 Tf 234.7 446.0 Td (Document owner: Engineering) Tj ET
+0.294 0.333 0.388 rg
+BT /F1 11.0 Tf 224.2 428.0 Td (Effective date: January 1, 2026) Tj ET
+0.294 0.333 0.388 rg
+BT /F1 9.0 Tf 148.3 386.0 Td (Internal enterprise knowledge base document for LoreForge demonstrations.) Tj ET
+endstream
+endobj
+6 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 5 0 R >>
+endobj
+7 0 obj
+<< /Length 4378 >>
+stream
+0.82 0.86 0.91 RG 0.8 w 58 724 m 554 724 l S
+0.82 0.86 0.91 RG 0.8 w 58 52 m 554 52 l S
+0.35 0.39 0.45 rg
+BT /F1 8.5 Tf 58 736 Td (Acme Technologies - Engineering Handbook) Tj ET
+BT /F1 8 Tf 58 37 Td (Acme Technologies Internal) Tj ET
+BT /F1 8 Tf 507.8 37 Td (Page 2 of 5) Tj ET
+0.090 0.125 0.200 rg
+BT /F2 14.5 Tf 58.0 706.0 Td (Table of Contents) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.0 Tf 62.0 684.0 Td (1. Engineering Principles) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.0 Tf 62.0 671.0 Td (2. Git Workflow) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.0 Tf 62.0 658.0 Td (3. Branching Strategy) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.0 Tf 62.0 645.0 Td (4. Pull Requests) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.0 Tf 62.0 632.0 Td (5. Code Reviews) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.0 Tf 62.0 619.0 Td (6. Testing Expectations) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.0 Tf 62.0 606.0 Td (7. CI/CD) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.0 Tf 62.0 593.0 Td (8. Production Deployments) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.0 Tf 62.0 580.0 Td (9. Logging) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.0 Tf 62.0 567.0 Td (10. Monitoring) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.0 Tf 62.0 554.0 Td (11. Related Documents) Tj ET
+0.090 0.125 0.200 rg
+BT /F2 14.5 Tf 58.0 541.0 Td (1. Engineering Principles) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 519.0 Td (Engineering at Acme Technologies is organized around reliability, security, maintainability,) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 505.0 Td (and explainability. Teams should prefer small changes, typed interfaces, automated) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 491.0 Td (verification, and clear operational ownership.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 473.0 Td (Systems that handle customer data must follow the Acme Technologies Information Security) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 459.0 Td (Policy. Systems that expose production health or readiness behavior must follow the Acme) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 445.0 Td (Technologies Cloud Operations Runbook.) Tj ET
+0.090 0.125 0.200 rg
+BT /F2 14.5 Tf 58.0 427.0 Td (2. Git Workflow) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 405.0 Td (All production code changes must be tracked in Git. Work should begin from the current main) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 391.0 Td (branch unless a release branch is active.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 373.0 Td (Standard workflow:) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.0 Tf 62.0 355.0 Td (1. Create a short-lived branch.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.0 Tf 62.0 342.0 Td (2. Make a focused change.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.0 Tf 62.0 329.0 Td (3. Run local verification.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.0 Tf 62.0 316.0 Td (4. Open a pull request.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.0 Tf 62.0 303.0 Td (5. Address review feedback.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.0 Tf 62.0 290.0 Td (6. Merge only after required checks pass.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 277.0 Td (Developers must not rewrite shared branch history unless the team has explicitly approved) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 263.0 Td (the cleanup. Secrets, credentials, customer documents, and private keys must never be) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 249.0 Td (committed.) Tj ET
+0.090 0.125 0.200 rg
+BT /F2 14.5 Tf 58.0 231.0 Td (3. Branching Strategy) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 209.0 Td (Acme Technologies uses trunk-based development with short-lived feature branches.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 191.0 Td (Branch naming convention:) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 173.0 Td (- `feature/<short-description>` for product work.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 160.3 Td (- `fix/<short-description>` for defects.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 147.6 Td (- `ops/<short-description>` for deployment and runtime changes.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 134.9 Td (- `docs/<short-description>` for documentation-only changes.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 122.2 Td (Branches should normally live less than five business days. Long-running work must be split) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 108.2 Td (behind safe interfaces or feature flags approved by Engineering.) Tj ET
+endstream
+endobj
+8 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 7 0 R >>
+endobj
+9 0 obj
+<< /Length 4573 >>
+stream
+0.82 0.86 0.91 RG 0.8 w 58 724 m 554 724 l S
+0.82 0.86 0.91 RG 0.8 w 58 52 m 554 52 l S
+0.35 0.39 0.45 rg
+BT /F1 8.5 Tf 58 736 Td (Acme Technologies - Engineering Handbook) Tj ET
+BT /F1 8 Tf 58 37 Td (Acme Technologies Internal) Tj ET
+BT /F1 8 Tf 507.8 37 Td (Page 3 of 5) Tj ET
+0.090 0.125 0.200 rg
+BT /F2 14.5 Tf 58.0 706.0 Td (4. Pull Requests) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 684.0 Td (Pull requests should be small enough for a reviewer to understand in one sitting. Each pull) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 670.0 Td (request must include:) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 652.0 Td (- Purpose of the change.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 639.3 Td (- User or operational impact.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 626.6 Td (- Verification performed.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 613.9 Td (- Risk and rollback notes for production-facing changes.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 601.2 Td (- Screenshots for visible frontend changes.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 588.5 Td (Pull requests that affect authentication, authorization, encryption, production deployment,) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 574.5 Td (logging, or customer data handling require Security review when the change is material.) Tj ET
+0.090 0.125 0.200 rg
+BT /F2 14.5 Tf 58.0 556.5 Td (5. Code Reviews) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 534.5 Td (Reviewers are responsible for correctness, maintainability, security, and operational) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 520.5 Td (safety. Reviews should focus on behavior and risk before style.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 502.5 Td (A reviewer should verify:) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 484.5 Td (- The change is scoped to the stated objective.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 471.8 Td (- Tests cover important behavior and edge cases.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 459.1 Td (- Interfaces remain stable unless a breaking change is approved.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 446.4 Td (- Errors are safe for users and useful for operators.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 433.7 Td (- Logs do not expose secrets or customer data.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 421.0 Td (- Ownership and access boundaries are preserved.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 408.3 Td (Authors should respond to review comments with either a change, a clarifying explanation, or) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 394.3 Td (a documented follow-up.) Tj ET
+0.090 0.125 0.200 rg
+BT /F2 14.5 Tf 58.0 376.3 Td (6. Testing Expectations) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 354.3 Td (Every code change must include appropriate verification. The default expectation is) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 340.3 Td (automated tests plus local quality checks.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 322.3 Td (Required checks before merge:) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 304.3 Td (- Unit tests for isolated business logic.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 291.6 Td (- Integration tests for important request or repository flows.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 278.9 Td (- Type checking for typed modules.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 266.2 Td (- Formatting and linting.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 253.5 Td (- Manual smoke testing when user-visible behavior changes.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 240.8 Td (Tests should be deterministic. Network calls, paid provider calls, and model downloads must) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 226.8 Td (be isolated behind opt-in smoke tests or test doubles.) Tj ET
+0.090 0.125 0.200 rg
+BT /F2 14.5 Tf 58.0 208.8 Td (7. CI/CD) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 186.8 Td (CI must run on pull requests and main branch updates. A pull request cannot merge until) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 172.8 Td (required backend and frontend checks pass.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 154.8 Td (The default pipeline should include:) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 136.8 Td (- Backend test suite.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 124.1 Td (- Backend formatting check.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 111.4 Td (- Backend lint check.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 98.7 Td (- Backend type check.) Tj ET
+endstream
+endobj
+10 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 9 0 R >>
+endobj
+11 0 obj
+<< /Length 4587 >>
+stream
+0.82 0.86 0.91 RG 0.8 w 58 724 m 554 724 l S
+0.82 0.86 0.91 RG 0.8 w 58 52 m 554 52 l S
+0.35 0.39 0.45 rg
+BT /F1 8.5 Tf 58 736 Td (Acme Technologies - Engineering Handbook) Tj ET
+BT /F1 8 Tf 58 37 Td (Acme Technologies Internal) Tj ET
+BT /F1 8 Tf 507.8 37 Td (Page 4 of 5) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 706.0 Td (- Frontend dependency installation from the lock file.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 693.3 Td (- Frontend tests.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 680.6 Td (- Frontend linting.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 667.9 Td (- Frontend production build.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 655.2 Td (CI should not require live Gemini, OpenRouter, or production database credentials. Live) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 641.2 Td (provider smoke tests are separate opt-in checks.) Tj ET
+0.090 0.125 0.200 rg
+BT /F2 14.5 Tf 58.0 623.2 Td (8. Production Deployments) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 601.2 Td (Production deployments require:) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 583.2 Td (- Approved pull request.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 570.5 Td (- Passing CI.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 557.8 Td (- No open critical or high severity security review findings.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 545.1 Td (- Change owner identified.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 532.4 Td (- Rollback plan documented.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 519.7 Td (- Maintenance window approval when customer impact is possible.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 507.0 Td (Database migrations must be reviewed for backward compatibility. Deployment owners must) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 493.0 Td (verify `/health` and `/ready` after startup. For infrastructure dependencies, follow the) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 479.0 Td (Cloud Operations Runbook.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 461.0 Td (Emergency production changes require incident commander approval during a SEV-1 or SEV-2) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 447.0 Td (incident and must be followed by a retrospective pull request or postmortem note.) Tj ET
+0.090 0.125 0.200 rg
+BT /F2 14.5 Tf 58.0 429.0 Td (9. Logging) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 407.0 Td (Logs should help operators understand what happened without exposing sensitive data.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 389.0 Td (Logging requirements:) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 371.0 Td (- Include request IDs when available.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 358.3 Td (- Use structured fields for stage, status, and duration.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 345.6 Td (- Avoid passwords, tokens, API keys, customer document contents, prompts, and) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 332.9 Td (  personal data.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 320.2 Td (- Avoid high-cardinality labels in metrics and dashboards.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 307.5 Td (- Log provider failures with safe summaries only.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 294.8 Td (Security logging requirements are governed by the Information Security Policy.) Tj ET
+0.090 0.125 0.200 rg
+BT /F2 14.5 Tf 58.0 276.8 Td (10. Monitoring) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 254.8 Td (Production services must expose health and readiness signals where applicable.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 236.8 Td (Applications should provide:) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 218.8 Td (- Liveness endpoint for process health.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 206.1 Td (- Readiness endpoint for startup completion.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 193.4 Td (- Request success and failure counters.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 180.7 Td (- Duration observations for critical workflows.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 168.0 Td (- Error logs with request IDs and safe failure categories.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 155.3 Td (The Cloud Operations Runbook defines alert handling, backup expectations, disaster recovery,) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 141.3 Td (and maintenance windows.) Tj ET
+0.090 0.125 0.200 rg
+BT /F2 14.5 Tf 58.0 123.3 Td (11. Related Documents) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 10.2 Tf 58.0 101.3 Td (Engineers should use this handbook together with:) Tj ET
+endstream
+endobj
+12 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 11 0 R >>
+endobj
+13 0 obj
+<< /Length 696 >>
+stream
+0.82 0.86 0.91 RG 0.8 w 58 724 m 554 724 l S
+0.82 0.86 0.91 RG 0.8 w 58 52 m 554 52 l S
+0.35 0.39 0.45 rg
+BT /F1 8.5 Tf 58 736 Td (Acme Technologies - Engineering Handbook) Tj ET
+BT /F1 8 Tf 58 37 Td (Acme Technologies Internal) Tj ET
+BT /F1 8 Tf 507.8 37 Td (Page 5 of 5) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 706.0 Td (- Acme Technologies - Information Security Policy.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 693.3 Td (- Acme Technologies - Incident Response Playbook.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 680.6 Td (- Acme Technologies - Cloud Operations Runbook.) Tj ET
+0.122 0.161 0.216 rg
+BT /F1 9.7 Tf 70.0 667.9 Td (- Acme Technologies - Employee Handbook.) Tj ET
+endstream
+endobj
+14 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 13 0 R >>
+endobj
+xref
+0 15
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000148 00000 n 
+0000000218 00000 n 
+0000000293 00000 n 
+0000001106 00000 n 
+0000001242 00000 n 
+0000005672 00000 n 
+0000005808 00000 n 
+0000010433 00000 n 
+0000010570 00000 n 
+0000015210 00000 n 
+0000015348 00000 n 
+0000016096 00000 n 
+trailer
+<< /Size 15 /Root 1 0 R >>
+startxref
+16234
+%%EOF
