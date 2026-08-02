@@ -1,128 +1,115 @@
 # LoreForge
 
-LoreForge is a Python 3.13 backend and React frontend foundation for a production-minded retrieval-augmented
-assistant named AskMe. It is a public portfolio project focused on enterprise
-RAG engineering: ingestion, retrieval, grounded generation, citation
-enforcement, evaluation, observability, persistence, authentication, and
-reproducible local development.
+Production-minded enterprise RAG system with hybrid retrieval, ownership isolation, and citation enforcement.
 
-The project is local-first and zero-cost by default. It starts without provider
-secrets, avoids live model calls during normal tests, and documents incomplete
-production areas instead of hiding them.
+LoreForge is a portfolio-grade backend and frontend project for a grounded question-answering assistant named AskMe. It demonstrates how an enterprise RAG workflow can be made inspectable: documents are parsed and chunked deterministically, retrieval combines semantic and lexical signals, answers are generated through provider abstractions, and citations are validated before a response is returned.
 
-## Problem Statement
-
-Enterprise RAG systems fail in ways that ordinary API tests do not catch:
-
-- documents are parsed or chunked incorrectly
-- retrieval misses relevant evidence
-- generated answers cite unsupported sources
-- ownership boundaries leak documents across users
-- provider failures expose unsafe details
-- quality regresses without visible HTTP errors
-
-LoreForge exists to demonstrate how to build and verify these boundaries in a
-small, inspectable backend.
+The project is local-first and deterministic by default. Providers, authentication, and PostgreSQL are configurable, but disabled unless explicitly enabled.
 
 ## Key Capabilities
 
-Implemented and tested:
+| Area | Implemented |
+| --- | --- |
+| Ingestion | PDF validation, page-aware parsing, text normalization, citation-aware chunking, indexing orchestration |
+| Retrieval | Semantic vector search, BM25 lexical search, Reciprocal Rank Fusion, metadata filtering, duplicate elimination |
+| Reranking | Local CrossEncoder reranker with startup warm-up support |
+| Generation | Provider-independent generation with Gemini and OpenRouter adapters |
+| Grounding | Evidence context construction, grounded prompts, citation extraction, citation enforcement, validated answers |
+| Persistence | PostgreSQL-backed metadata, users, ownership, indexing state, chunks, embeddings, and retrieval records |
+| Security | API-key bearer authentication and owner-scoped document access |
+| Runtime | Dependency injection, lifecycle readiness, structured logging, metrics, Gemini retry handling, graceful shutdown |
+| Quality | Offline deterministic tests, Ruff, mypy, GitHub Actions CI, Docker packaging |
+| Frontend | React/Vite workspace for authentication, documents, AskMe, citations, and engineering operations |
 
-- FastAPI application with `/health`, `/ready`, `/metrics`, admin, document, and
-  AskMe routes
-- PDF upload validation, page-aware parsing, deterministic normalization, and
-  citation-aware chunking
-- ingestion-to-index orchestration with rollback behavior
-- document catalog, indexing state, user, ownership, chunk, embedding, and
-  retrieval metadata contracts
-- PostgreSQL persistence via SQLAlchemy and Alembic migrations
-- API-key bearer authentication and ownership isolation
-- embedding provider contracts, local Sentence Transformers provider, and Gemini
-  embedding provider
-- in-memory vector index and BM25 lexical index
-- hybrid retrieval with Reciprocal Rank Fusion
-- cross-encoder reranking contract and local provider
-- grounded evidence context, prompt construction, provider-independent
-  generation, Gemini generation, OpenRouter adapter, citation extraction, and
-  citation enforcement
-- production query composition engine
-- request IDs, structured request logging, readiness checks, and in-process
-  metrics
-- deterministic offline evaluation framework with regression thresholds and CLI
-- Dockerfile, `.dockerignore`, and Docker Compose configuration
+## Architecture Overview
 
-Default behavior:
-
-- providers are disabled
-- auth is disabled unless configured
-- PostgreSQL is disabled unless `LOREFORGE_DATABASE_URL` is set
-- `/ask` returns `503` until providers and indexed evidence are configured
-- live Gemini and database smoke tests are skipped unless explicitly enabled
-
-## Architecture Summary
+LoreForge follows a Clean Architecture shape:
 
 ```text
-FastAPI adapters
-  -> application container and services
-  -> LoreForge-owned protocols and core workflows
-  -> infrastructure adapters
-  -> provider/database libraries
+FastAPI routes / React UI
+  -> application services and container
+  -> domain models, protocols, and workflows
+  -> infrastructure adapters for databases and providers
 ```
 
-Core workflows are framework-independent where practical. FastAPI handles
-transport concerns; application services and provider/repository protocols carry
-the backend behavior.
+The composition root wires concrete providers and repositories into framework-independent services. The core query engine does not know about FastAPI, environment variables, SQLAlchemy sessions, Gemini clients, or frontend transport models.
 
-See [docs/architecture.md](docs/architecture.md) for request, ingestion,
-retrieval, evaluation, and observability lifecycle diagrams.
+![High-level system architecture](docs/architecture/images/high-level-system-architecture.svg)
+
+Additional architecture assets:
+
+- [Document ingestion and indexing flow](docs/architecture/images/document-ingestion-and-indexing-flow.svg) ([source](docs/architecture/diagrams/document-ingestion-and-indexing-flow.mmd))
+- [Clean architecture dependency direction](docs/architecture/images/clean-architecture-dependency-direction.svg) ([source](docs/architecture/diagrams/clean-architecture-dependency-direction.mmd))
+- [Runtime lifecycle and readiness](docs/architecture/images/runtime-lifecycle-and-readiness.svg) ([source](docs/architecture/diagrams/runtime-lifecycle-and-readiness.mmd))
+- [Mermaid source for high-level system architecture](docs/architecture/diagrams/high-level-system-architecture.mmd)
+
+## How The RAG Pipeline Works
+
+![AskMe grounded query flow](docs/architecture/images/askme-grounded-query-flow.svg)
+
+[Mermaid source for the AskMe flow](docs/architecture/diagrams/askme-grounded-query-flow.mmd)
+
+Important boundaries:
+
+- `POST /documents/upload` validates and accepts a PDF, but does not durably store the PDF or index it.
+- Actual indexing happens through the admin catalog/indexing workflow.
+- Original PDF bytes are not durably stored.
+- Retrieval can use persisted metadata, chunks, embeddings, and retrieval records, but a full production rebuild strategy still needs durable original-file storage or a formal rebuild worker/runbook.
+- `/ready` reports only in-process lifecycle readiness. It performs no live database, Gemini, reranker, query-engine, or external dependency checks at request time.
+
+## Screenshots
+
+![Grounded multi-source answer](docs/screenshots/grounded-answer.jpg)
+
+*Grounded multi-source answer*
+
+| Product overview | Indexed document collection | Operations dashboard |
+| --- | --- | --- |
+| ![Product overview](docs/screenshots/landing-page.jpg) | ![Indexed document collection](docs/screenshots/documents-workspace.jpg) | ![Operations dashboard](docs/screenshots/operations-dashboard.jpg) |
 
 ## Technology Stack
 
-- Python 3.13
-- FastAPI and Uvicorn
-- uv
-- SQLAlchemy, Alembic, PostgreSQL via psycopg
-- pypdf
-- Sentence Transformers
-- Gemini through `google-genai`
-- pytest
-- Ruff
-- mypy
-- Docker and Docker Compose packaging
-- React, TypeScript, Vite, React Router, TanStack Query, React Hook Form, Zod, Vitest, and React Testing Library
-
-See [docs/dependencies.md](docs/dependencies.md) for the dependency audit.
+| Layer | Tools |
+| --- | --- |
+| Backend | Python 3.13, FastAPI, Uvicorn, uv |
+| Data | PostgreSQL, SQLAlchemy, Alembic, psycopg |
+| Documents | pypdf |
+| Retrieval | local vector index, BM25, Reciprocal Rank Fusion |
+| Models/providers | Sentence Transformers, local CrossEncoder, Gemini via `google-genai`, OpenRouter adapter |
+| Quality | pytest, Ruff, mypy |
+| Runtime | Docker, Docker Compose, structured logging, in-process metrics |
+| Frontend | React, TypeScript, Vite, React Router, TanStack Query, React Hook Form, Zod, Vitest, React Testing Library |
+| CI | GitHub Actions in `.github/workflows/ci.yml` |
 
 ## Project Structure
 
 ```text
-frontend/         React product shell, route architecture, API client foundation, and UI tokens
+frontend/         React product workspace
 src/loreforge/
-  api/              FastAPI transport routes
+  api/              FastAPI routes and transport models
   application/      application container and composition root
-  askme/            framework-independent AskMe service contract
-  auth/             user identity, auth protocols, API-key authenticator
-  catalog/          document lifecycle and ownership metadata
-  database/         SQLAlchemy models, repositories, engine lifecycle
-  documents/        upload, parsing, normalization, chunking, ingestion
-  embeddings/       embedding contracts, local provider, Gemini provider
-  evaluation/       deterministic offline quality regression framework
-  generation/       evidence, prompts, generation providers, citations
+  askme/            AskMe application service
+  auth/             user identity, principals, API-key authentication
+  catalog/          document metadata and lifecycle catalog
+  database/         SQLAlchemy models, repositories, database runtime
+  documents/        upload validation, parsing, normalization, chunking, ingestion
+  embeddings/       embedding models and provider adapters
+  evaluation/       deterministic quality evaluation
+  generation/       evidence, prompts, providers, citations, validation
   indexing/         ingestion-to-index orchestration
-  observability/    request context, traces, metrics, provider adapters
-  query/            production grounded-query composition engine
-  reranking/        reranker contracts and local provider
-  retrieval/        BM25, vector, hybrid/RRF, durable retrieval support
-  vector_index/     in-memory vector index and similarity
-
-migrations/         Alembic migrations
-tests/              offline test suite and deterministic fixtures
-docs/               engineering documentation
+  observability/    request IDs, traces, metrics, runtime observations
+  query/            production grounded-query engine
+  reranking/        reranker contracts and local CrossEncoder adapter
+  retrieval/        BM25, hybrid retrieval, durable retrieval contracts
+  vector_index/     in-memory vector index primitives
+migrations/       Alembic migrations
+tests/            deterministic backend test suite
+docs/             public engineering documentation
 ```
 
-## Local Development
+## Quick Start
 
-Install dependencies:
+Install backend dependencies:
 
 ```powershell
 uv sync --all-groups
@@ -134,14 +121,14 @@ Run the API:
 uv run --locked uvicorn loreforge.main:app --app-dir src
 ```
 
-Useful endpoints:
+Useful local endpoints:
 
 - `GET /health`
 - `GET /ready`
 - `GET /metrics`
 - `GET /docs`
 
-Run the frontend foundation:
+Run the frontend:
 
 ```powershell
 cd frontend
@@ -149,159 +136,117 @@ npm install
 npm run dev
 ```
 
+## Configuration Overview
+
+Configuration lives in `src/loreforge/settings.py` and is documented in `.env.example` and [docs/configuration.md](docs/configuration.md).
+
+Default local posture:
+
+- providers are `disabled`
+- auth is `disabled`
+- PostgreSQL is disabled when `LOREFORGE_DATABASE_URL` is empty
+- live Gemini and database smoke tests are skipped
+- `/ask` returns `503` until providers, retrieval data, and runtime dependencies are configured
+
+Common production-facing settings include:
+
+- `LOREFORGE_ENVIRONMENT=production`
+- `LOREFORGE_PUBLIC_BASE_URL=...`
+- `LOREFORGE_DATABASE_URL=...`
+- `LOREFORGE_AUTH_PROVIDER=api_key`
+- `LOREFORGE_AUTH_API_KEYS=...`
+- `LOREFORGE_DOCUMENT_EMBEDDINGS_PROVIDER=local|gemini`
+- `LOREFORGE_QUERY_EMBEDDINGS_PROVIDER=local|gemini`
+- `LOREFORGE_RERANKER_PROVIDER=local`
+- `LOREFORGE_LLM_PROVIDER=gemini|openrouter`
+
+Secrets are supplied through environment variables and are not required for the default offline test path.
+
+## Testing And Quality Gates
+
+Current verified backend result:
+
+```text
+1403 passed, 2 skipped
+```
+
+Backend checks:
+
+```powershell
+uv run --locked pytest
+uv run --locked ruff format --check .
+uv run --locked ruff check .
+uv run --locked mypy src
+git diff --check
+```
+
 Frontend checks:
 
 ```powershell
+cd frontend
 npm run typecheck
 npm test
 npm run lint
 npm run build
 ```
 
-For a fuller handoff path, see [docs/onboarding.md](docs/onboarding.md) and
-[docs/frontend.md](docs/frontend.md).
+CI exists at `.github/workflows/ci.yml` and runs deterministic backend and frontend checks without live provider calls.
 
-## Configuration
+## Docker Status
 
-Configuration is centralized in `src/loreforge/settings.py` and documented in
-`.env.example`.
+Docker support is implemented with `Dockerfile`, `.dockerignore`, and `docker-compose.yml`.
 
-Copy the template only for local overrides:
+Verified during hardening:
 
-```powershell
-Copy-Item .env.example .env
-```
+- production image build succeeded
+- container ran as non-root user `loreforge`
+- `/health` returned success
+- `/ready` returned success after startup
+- a basic container smoke request completed
+- Compose configuration validated with `docker compose config`
 
-Important defaults:
-
-- `LOREFORGE_ENVIRONMENT=development`
-- provider selections are `disabled`
-- `LOREFORGE_DATABASE_URL` is empty
-- `LOREFORGE_AUTH_PROVIDER=disabled`
-- live smoke tests are disabled
-
-Production mode requires `LOREFORGE_PUBLIC_BASE_URL` and rejects debug logging.
-
-See [docs/configuration.md](docs/configuration.md).
-
-## Database and Migrations
-
-Leave `LOREFORGE_DATABASE_URL` empty for in-memory local startup.
-
-When PostgreSQL is configured:
-
-```powershell
-uv run --locked alembic -c alembic.ini upgrade head
-```
-
-See [docs/postgresql-persistence.md](docs/postgresql-persistence.md).
-
-## Testing
-
-Run the full deterministic suite:
-
-```powershell
-uv run --locked pytest
-```
-
-Run static checks:
-
-```powershell
-uv run --locked ruff check .
-uv run --locked ruff format --check .
-uv run --locked mypy src
-git diff --check
-```
-
-Live provider/database smoke tests are opt-in and skipped by default.
-
-## Evaluation
-
-Passing deterministic quality gate:
-
-```powershell
-uv run --locked python -m loreforge.evaluation --dataset tests/fixtures/evaluation/golden_dataset.json --thresholds tests/fixtures/evaluation/thresholds.json --output .tmp/evaluation-golden-report.json --human
-```
-
-Intentional degraded gate:
-
-```powershell
-uv run --locked python -m loreforge.evaluation --dataset tests/fixtures/evaluation/degraded_dataset.json --thresholds tests/fixtures/evaluation/thresholds.json --output .tmp/evaluation-degraded-report.json --human
-```
-
-Exit codes:
-
-- `0`: pass
-- `1`: quality regression
-- `2`: configuration/setup error
-
-See [docs/evaluation.md](docs/evaluation.md).
-
-## Observability
-
-LoreForge includes:
-
-- `X-Request-ID` correlation
-- request-local observability context
-- structured request logs
-- `/metrics` JSON snapshot
-- HTTP, readiness, retrieval, indexing, and provider-operation metrics
-
-Logs and metrics avoid secrets, prompts, full questions, answers, raw document
-text, vectors, provider payloads, filenames, request IDs as metric labels, user
-IDs as metric labels, and document IDs as metric labels.
-
-See [docs/observability.md](docs/observability.md).
-
-## Deployment
-
-Dockerfile, `.dockerignore`, and Docker Compose configuration are present.
-
-Docker packaging is implemented with a production-oriented Dockerfile, `.dockerignore`, and Compose configuration. The image is designed to run as the non-root `loreforge` user and expose `/health` and lifecycle `/ready` checks.
-
-See [docs/deployment.md](docs/deployment.md).
-
-## Production Readiness
-
-See [docs/production-readiness-checklist.md](docs/production-readiness-checklist.md)
-for completed, partial, pending, and future items across security, retrieval,
-persistence, observability, evaluation, deployment, testing, and documentation.
-
-## Demo and Interview Guides
-
-- [docs/demo-guide.md](docs/demo-guide.md)
-- [docs/interview-guide.md](docs/interview-guide.md)
-- [docs/final-engineering-audit.md](docs/final-engineering-audit.md)
+The later repeat run was blocked by Docker Desktop host instability, including Docker engine startup failures unrelated to LoreForge application code. Re-run Docker image and container smoke verification on a healthy Docker daemon before release.
 
 ## Known Limitations
 
-- Default `/ask` is unavailable until providers and evidence are configured.
+- `POST /documents/upload` does not persist original PDF bytes or index documents.
+- Original PDF bytes are not durably stored anywhere yet.
+- Runtime vector/BM25 structures still need an explicit rebuild strategy after restart or redeploy.
+- `/ready` is lifecycle-state only; it does not prove PostgreSQL, Gemini, OpenRouter, or model-cache reachability.
 - Metrics are in-process and reset on restart.
-- No external metrics collector, dashboards, alerts, or distributed tracing.
-- Original uploaded PDF bytes are not durably stored; retrieval rebuilds depend on persisted metadata, chunks, and embeddings rather than replaying source files.
-- Runtime vector and BM25 structures still need an explicit rebuild/runbook after restart or redeploy.
-- Evaluation is deterministic fixture mode, not live provider/database quality
-  evaluation.
-- No OAuth/OIDC, roles, RBAC, or rate limiting.
-- No Kubernetes or cloud-specific deployment manifests.
+- Evaluation is deterministic fixture mode, not live production quality evaluation.
+- OAuth/OIDC, roles, RBAC, rate limiting, object storage, Kubernetes, horizontal scaling, and distributed tracing are not implemented.
+- Live provider behavior depends on configured API keys, provider availability, model limits, and local model cache state.
 
 ## Roadmap
 
 Near term:
 
-- Add focused rebuild/runbook docs for runtime retrieval structures.
-- Add durable original-file storage for full rebuild and disaster-recovery workflows.
+- Add durable original-file storage or an explicit retrieval rebuild worker/runbook.
+- Capture real screenshots for the README and demo guide.
+- Re-run Docker smoke verification on a stable Docker Desktop/daemon.
 
 Mid term:
 
-- Durable uploaded-file storage.
-- Background indexing workers and retry/idempotency controls.
-- External metrics export and dashboards.
-- Expanded golden evaluation set with human-reviewed cases.
+- Background indexing workers with retry and idempotency controls.
+- External metrics export, dashboards, and alerts.
+- Larger human-reviewed golden evaluation set.
 
 Long term:
 
-- OIDC/JWT enterprise identity provider integration.
-- Durable vector/BM25 retrieval backend or rebuildable retrieval service.
-- Production deployment runbooks and backup/restore procedures.
+- OIDC/JWT enterprise identity integration.
+- Durable vector/BM25 backend or fully rebuildable retrieval service.
+- Backup/restore and disaster-recovery procedures.
 - Optional model-assisted evaluation alongside deterministic gates.
+
+## Engineering Highlights
+
+- Demonstrates end-to-end enterprise RAG architecture rather than a single prompt demo.
+- Uses hybrid retrieval: semantic search plus BM25, fused with Reciprocal Rank Fusion.
+- Adds CrossEncoder reranking before evidence is sent to generation.
+- Enforces citations before returning answers to users.
+- Preserves Clean Architecture with provider and repository abstractions.
+- Includes authentication, ownership isolation, PostgreSQL persistence, readiness, retries, metrics, CI, and Docker packaging.
+- Keeps default development deterministic, offline, and zero-cost.
+
+For deeper context, see [docs/demo-guide.md](docs/demo-guide.md) and [docs/final-engineering-audit.md](docs/final-engineering-audit.md).
