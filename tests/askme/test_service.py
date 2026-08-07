@@ -31,9 +31,16 @@ class FakeEngine:
     def __init__(self, answer: ValidatedGroundedAnswer) -> None:
         self.answer_value = answer
         self.questions: list[str] = []
+        self.owner_user_ids: list[UUID | None] = []
 
-    def answer(self, question: str) -> ValidatedGroundedAnswer:
+    def answer(
+        self,
+        question: str,
+        *,
+        owner_user_id: UUID | None = None,
+    ) -> ValidatedGroundedAnswer:
         self.questions.append(question)
+        self.owner_user_ids.append(owner_user_id)
         return self.answer_value
 
 
@@ -41,9 +48,16 @@ class RaisingEngine:
     def __init__(self, error: Exception) -> None:
         self.error = error
         self.questions: list[str] = []
+        self.owner_user_ids: list[UUID | None] = []
 
-    def answer(self, question: str) -> ValidatedGroundedAnswer:
+    def answer(
+        self,
+        question: str,
+        *,
+        owner_user_id: UUID | None = None,
+    ) -> ValidatedGroundedAnswer:
         self.questions.append(question)
+        self.owner_user_ids.append(owner_user_id)
         raise self.error
 
 
@@ -51,7 +65,12 @@ class InvalidEngine:
     def __init__(self, answer: object) -> None:
         self.answer_value = answer
 
-    def answer(self, question: str) -> ValidatedGroundedAnswer:
+    def answer(
+        self,
+        question: str,
+        *,
+        owner_user_id: UUID | None = None,
+    ) -> ValidatedGroundedAnswer:
         return self.answer_value  # type: ignore[return-value]
 
 
@@ -77,6 +96,25 @@ def test_exact_question_passed_to_engine() -> None:
     service.ask(AskMeRequest(question))
 
     assert engine.questions == [question]
+
+
+def test_owner_user_id_passed_to_engine() -> None:
+    owner_user_id = UUID("00000000-0000-0000-0000-000000000777")
+    engine = FakeEngine(_validated_answer())
+    service = AskMeService(query_engine=engine, request_id_factory=lambda: REQUEST_ID)
+
+    service.ask(AskMeRequest(QUESTION, owner_user_id=owner_user_id))
+
+    assert engine.owner_user_ids == [owner_user_id]
+
+
+def test_auth_disabled_request_uses_unscoped_engine_call() -> None:
+    engine = FakeEngine(_validated_answer())
+    service = AskMeService(query_engine=engine, request_id_factory=lambda: REQUEST_ID)
+
+    service.ask(AskMeRequest(QUESTION))
+
+    assert engine.owner_user_ids == [None]
 
 
 def test_successful_validated_result_mapping() -> None:

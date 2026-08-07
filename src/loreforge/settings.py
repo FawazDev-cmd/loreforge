@@ -350,6 +350,9 @@ class AuthSettings:
 
     provider: AuthProvider = AuthProvider.DISABLED
     api_keys: tuple[ApiKeyCredentialSetting, ...] = ()
+    demo_user_ids: tuple[UUID, ...] = ()
+    demo_ask_rate_limit_requests: int = 10
+    demo_ask_rate_limit_window_seconds: int = 60
     jwt_issuer: str | None = None
     jwt_audience: str | None = None
     jwks_url: str | None = None
@@ -358,10 +361,25 @@ class AuthSettings:
         if type(self.api_keys) is not tuple:
             msg = "LOREFORGE_AUTH_API_KEYS must be parsed as a tuple"
             raise SettingsError(msg)
+        if type(self.demo_user_ids) is not tuple:
+            msg = "LOREFORGE_AUTH_DEMO_USER_IDS must be parsed as a tuple"
+            raise SettingsError(msg)
         for credential in self.api_keys:
             if type(credential) is not ApiKeyCredentialSetting:
                 msg = "LOREFORGE_AUTH_API_KEYS entries must be API-key credentials"
                 raise SettingsError(msg)
+        for demo_user_id in self.demo_user_ids:
+            if type(demo_user_id) is not UUID:
+                msg = "LOREFORGE_AUTH_DEMO_USER_IDS values must be UUIDs"
+                raise SettingsError(msg)
+        _require_positive_int(
+            self.demo_ask_rate_limit_requests,
+            "LOREFORGE_DEMO_ASK_RATE_LIMIT_REQUESTS",
+        )
+        _require_positive_int(
+            self.demo_ask_rate_limit_window_seconds,
+            "LOREFORGE_DEMO_ASK_RATE_LIMIT_WINDOW_SECONDS",
+        )
         if self.jwt_issuer is not None:
             _require_https_url(self.jwt_issuer, "LOREFORGE_AUTH_JWT_ISSUER")
         _validate_optional_nonblank(
@@ -574,6 +592,17 @@ def load_settings(
                 AuthProvider.DISABLED,
             ),
             api_keys=_api_key_credentials(values, "LOREFORGE_AUTH_API_KEYS"),
+            demo_user_ids=_uuid_csv(values, "LOREFORGE_AUTH_DEMO_USER_IDS"),
+            demo_ask_rate_limit_requests=_int(
+                values,
+                "LOREFORGE_DEMO_ASK_RATE_LIMIT_REQUESTS",
+                10,
+            ),
+            demo_ask_rate_limit_window_seconds=_int(
+                values,
+                "LOREFORGE_DEMO_ASK_RATE_LIMIT_WINDOW_SECONDS",
+                60,
+            ),
             jwt_issuer=_optional_string(values, "LOREFORGE_AUTH_JWT_ISSUER"),
             jwt_audience=_optional_string(values, "LOREFORGE_AUTH_JWT_AUDIENCE"),
             jwks_url=_optional_string(values, "LOREFORGE_AUTH_JWKS_URL"),
@@ -695,6 +724,23 @@ def _csv(values: Mapping[str, str], name: str) -> tuple[str, ...]:
     if raw_value is None or not raw_value.strip():
         return ()
     return tuple(item.strip() for item in raw_value.split(",") if item.strip())
+
+
+def _uuid_csv(values: Mapping[str, str], name: str) -> tuple[UUID, ...]:
+    raw_value = values.get(name)
+    if raw_value is None or not raw_value.strip():
+        return ()
+    user_ids: list[UUID] = []
+    for item in raw_value.split(","):
+        raw_item = item.strip()
+        if not raw_item:
+            continue
+        try:
+            user_ids.append(UUID(raw_item))
+        except ValueError as error:
+            msg = f"{name} values must be valid UUID values"
+            raise SettingsError(msg) from error
+    return tuple(user_ids)
 
 
 def _api_key_credentials(

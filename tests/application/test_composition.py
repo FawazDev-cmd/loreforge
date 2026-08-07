@@ -46,9 +46,16 @@ class FakeEngine:
     def __init__(self, answer: ValidatedGroundedAnswer) -> None:
         self.answer_value = answer
         self.questions: list[str] = []
+        self.owner_user_ids: list[UUID | None] = []
 
-    def answer(self, question: str) -> ValidatedGroundedAnswer:
+    def answer(
+        self,
+        question: str,
+        *,
+        owner_user_id: UUID | None = None,
+    ) -> ValidatedGroundedAnswer:
         self.questions.append(question)
+        self.owner_user_ids.append(owner_user_id)
         return self.answer_value
 
 

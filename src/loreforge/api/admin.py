@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from pydantic import BaseModel, Field, field_validator
 
 from loreforge.api.auth import get_current_principal
+from loreforge.api.demo import require_not_demo
 from loreforge.application import ApplicationContainer
 from loreforge.auth import AuthenticatedPrincipal
 from loreforge.catalog import (
@@ -139,6 +140,7 @@ def create_document(
         Depends(get_current_principal),
     ],
 ) -> DocumentResponse:
+    require_not_demo(principal)
     try:
         entry = service.register_upload(
             document_id=_new_document_id(),
@@ -172,6 +174,7 @@ async def index_document(
         Depends(get_current_principal),
     ],
 ) -> IndexedDocumentResponse:
+    require_not_demo(principal)
     try:
         content = await file.read(MAX_UPLOAD_SIZE_BYTES + 1)
         if principal is None:
@@ -231,6 +234,7 @@ def mark_document_ingesting(
         Depends(get_current_principal),
     ],
 ) -> DocumentResponse:
+    require_not_demo(principal)
     if principal is None:
         return _transition_document(lambda: service.mark_ingesting(document_id))
     return _transition_document(
@@ -251,6 +255,7 @@ def mark_document_ready(
         Depends(get_current_principal),
     ],
 ) -> DocumentResponse:
+    require_not_demo(principal)
     if principal is None:
         return _transition_document(
             lambda: service.mark_ready(
@@ -278,6 +283,7 @@ def mark_document_failed(
         Depends(get_current_principal),
     ],
 ) -> DocumentResponse:
+    require_not_demo(principal)
     if principal is None:
         return _transition_document(lambda: service.mark_failed(document_id))
     return _transition_document(
@@ -294,6 +300,7 @@ def mark_document_deleted(
         Depends(get_current_principal),
     ],
 ) -> DocumentResponse:
+    require_not_demo(principal)
     if principal is None:
         return _transition_document(lambda: service.mark_deleted(document_id))
     return _transition_document(
@@ -313,6 +320,7 @@ def delete_document(
         Depends(get_current_principal),
     ],
 ) -> None:
+    require_not_demo(principal)
     try:
         if principal is None:
             service.delete_document(document_id=document_id)

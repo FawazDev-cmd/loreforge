@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from pydantic import BaseModel
 
 from loreforge.api.auth import get_current_principal
+from loreforge.api.demo import require_not_demo
 from loreforge.auth import AuthenticatedPrincipal
 from loreforge.documents import DocumentSource
 from loreforge.documents.upload import (
@@ -33,11 +34,12 @@ class DocumentUploadResponse(BaseModel):
 )
 async def upload_document(
     file: Annotated[UploadFile, File(description="PDF file to accept")],
-    _principal: Annotated[
+    principal: Annotated[
         AuthenticatedPrincipal | None,
         Depends(get_current_principal),
     ],
 ) -> DocumentUploadResponse:
+    require_not_demo(principal)
     try:
         content = await file.read(MAX_UPLOAD_SIZE_BYTES + 1)
         validated_upload = validate_pdf_upload(

@@ -14,6 +14,7 @@ from fastapi.responses import JSONResponse
 from loreforge.api.admin import router as admin_router
 from loreforge.api.askme import router as askme_router
 from loreforge.api.auth import get_current_principal
+from loreforge.api.demo import InMemoryDemoRateLimiter, require_not_demo
 from loreforge.api.documents import router as documents_router
 from loreforge.application import (
     ApplicationContainer,
@@ -79,6 +80,7 @@ def create_app(
         lifespan=lifespan,
     )
     application.state.runtime_state = runtime_state
+    application.state.demo_rate_limiter = InMemoryDemoRateLimiter()
 
     if runtime_settings.api.cors_allowed_origins:
         application.add_middleware(
@@ -156,11 +158,12 @@ def create_app(
 
     @application.get("/metrics")
     def metrics(
-        _principal: Annotated[
+        principal: Annotated[
             AuthenticatedPrincipal | None,
             Depends(get_current_principal),
         ],
     ) -> dict[str, object]:
+        require_not_demo(principal)
         container = getattr(application.state, "container", None)
         if type(container) is not ApplicationContainer:
             return {"status": "unavailable", "metrics": {}}

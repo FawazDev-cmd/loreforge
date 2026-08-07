@@ -3,6 +3,7 @@
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass
+from uuid import UUID
 
 from loreforge.application.container import ApplicationContainer
 from loreforge.askme import AskMeService, AskMeUnavailableError
@@ -92,7 +93,12 @@ def _create_retrieval_repository(
 class UnavailableGroundedQueryEngine:
     """Grounded-query engine used until concrete runtime dependencies are wired."""
 
-    def answer(self, question: str) -> ValidatedGroundedAnswer:
+    def answer(
+        self,
+        question: str,
+        *,
+        owner_user_id: UUID | None = None,
+    ) -> ValidatedGroundedAnswer:
         raise AskMeUnavailableError(_UNAVAILABLE_DETAIL)
 
 
@@ -202,6 +208,7 @@ def _create_authenticator(
         user = UserIdentity(
             user_id=configured.user_id,
             display_name=configured.display_name,
+            is_demo=configured.user_id in settings.auth.demo_user_ids,
         )
         if user_repository.get(user.user_id) is None:
             user_repository.add(user)

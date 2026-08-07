@@ -41,11 +41,15 @@ from loreforge.retrieval import (
     LexicalSearchResult,
     RetrievalContribution,
 )
+from loreforge.retrieval.filters import RetrievalFilter
 from loreforge.vector_index import IndexedVector, VectorSearchResult
 
 QUESTION = "What is the refund policy?"
 ANSWER = "Refund requests must be submitted within 14 days [S1]."
 QUERY_ID = UUID("00000000-0000-0000-0000-000000000001")
+OWNER_ID_1 = UUID("00000000-0000-0000-0000-000000000a01")
+OWNER_ID_2 = UUID("00000000-0000-0000-0000-000000000a02")
+OWNER_ID_3 = UUID("00000000-0000-0000-0000-000000000a03")
 DOCUMENT_ID_1 = UUID("00000000-0000-0000-0000-000000000201")
 DOCUMENT_ID_2 = UUID("00000000-0000-0000-0000-000000000202")
 CHUNK_ID_1 = UUID("00000000-0000-0000-0000-000000000101")
@@ -123,22 +127,45 @@ class FakeRetrievalRepository:
     ) -> None:
         self.semantic = semantic
         self.lexical = lexical
+        self.vector_filters: list[RetrievalFilter] = []
+        self.lexical_filters: list[RetrievalFilter] = []
 
     def vector_search(
         self,
         *,
         query_vector: tuple[float, ...],
         top_k: int,
-        filters: object = None,
+        filters: RetrievalFilter = RetrievalFilter(),
     ) -> tuple[VectorSearchResult, ...]:
-        return self.semantic.search(query_vector=query_vector, top_k=top_k)
+        self.vector_filters.append(filters)
+        results = self.semantic.search(query_vector=query_vector, top_k=top_k)
+        return tuple(
+            result for result in results if _owner_allows(result.indexed.chunk, filters)
+        )
 
     def lexical_search(
         self,
         request: LexicalSearchRequest,
-        filters: object = None,
+        filters: RetrievalFilter = RetrievalFilter(),
     ) -> LexicalSearchResponse:
-        return self.lexical.search(request)
+        self.lexical_filters.append(filters)
+        response = self.lexical.search(request)
+        filtered_results = tuple(
+            result
+            for result in response.results
+            if _owner_allows(result.chunk, filters)
+        )
+        return LexicalSearchResponse(
+            query=response.query,
+            results=tuple(
+                LexicalSearchResult(
+                    chunk=result.chunk,
+                    score=result.score,
+                    rank=index,
+                )
+                for index, result in enumerate(filtered_results, start=1)
+            ),
+        )
 
 
 class FakeRerankerProvider:
@@ -235,7 +262,39 @@ class EngineParts:
         self.hybrid_inputs.append((semantic_results, lexical_results))
         if self.fail_at == "hybrid":
             raise RuntimeError("raw hybrid details")
-        return _hybrid_results()[:top_k]
+        results: list[HybridSearchResult] = []
+        seen_chunk_ids: set[UUID] = set()
+        for result in semantic_results:
+            chunk = result.indexed.chunk
+            if chunk.chunk_id in seen_chunk_ids:
+                continue
+            seen_chunk_ids.add(chunk.chunk_id)
+            results.append(
+                HybridSearchResult(
+                    chunk=chunk,
+                    fused_score=1 / (rrf_k + result.rank),
+                    rank=len(results) + 1,
+                    contributions=(
+                        RetrievalContribution("semantic", result.rank, result.score),
+                    ),
+                )
+            )
+        for result in lexical_results:
+            chunk = result.chunk
+            if chunk.chunk_id in seen_chunk_ids:
+                continue
+            seen_chunk_ids.add(chunk.chunk_id)
+            results.append(
+                HybridSearchResult(
+                    chunk=chunk,
+                    fused_score=1 / (rrf_k + result.rank),
+                    rank=len(results) + 1,
+                    contributions=(
+                        RetrievalContribution("lexical", result.rank, result.score),
+                    ),
+                )
+            )
+        return tuple(results[:top_k])
 
     def reranking_stage(
         self,
@@ -361,6 +420,29 @@ def test_successful_flow_preserves_answer_question_citations_and_source_identity
     assert source.chunk_id == CHUNK_ID_1
     assert source.filename == "refund-policy.pdf"
     assert source.page_number == 2
+
+
+def test_owner_scoped_retrieval_returns_only_owner_sources() -> None:
+    owner_one = EngineParts().engine().answer(QUESTION, owner_user_id=OWNER_ID_1)
+    owner_two = EngineParts().engine().answer(QUESTION, owner_user_id=OWNER_ID_2)
+
+    assert owner_one.cited_sources[0].document_id == DOCUMENT_ID_1
+    assert owner_two.cited_sources[0].document_id == DOCUMENT_ID_2
+
+
+def test_unknown_owner_retrieval_finds_no_evidence() -> None:
+    with pytest.raises(NoRelevantEvidenceError):
+        EngineParts().engine().answer(QUESTION, owner_user_id=OWNER_ID_3)
+
+
+def test_auth_disabled_query_uses_unscoped_retrieval() -> None:
+    parts = EngineParts()
+
+    result = parts.engine().answer(QUESTION)
+
+    assert result.cited_sources[0].document_id == DOCUMENT_ID_1
+    assert parts.retrieval_repository.vector_filters == [RetrievalFilter()]
+    assert parts.retrieval_repository.lexical_filters == [RetrievalFilter()]
 
 
 def test_pipeline_call_order() -> None:
@@ -562,6 +644,16 @@ def test_repeated_runs_with_deterministic_collaborators_are_equal() -> None:
     second = EngineParts().engine().answer(QUESTION)
 
     assert first == second
+
+
+def _owner_allows(chunk: DocumentChunk, filters: RetrievalFilter) -> bool:
+    if not filters.owner_user_ids:
+        return True
+    owner_by_document = {
+        DOCUMENT_ID_1: OWNER_ID_1,
+        DOCUMENT_ID_2: OWNER_ID_2,
+    }
+    return owner_by_document.get(chunk.document_id) in filters.owner_user_ids
 
 
 def _empty_hybrid_fuser(

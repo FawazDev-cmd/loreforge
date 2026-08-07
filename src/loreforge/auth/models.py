@@ -10,6 +10,7 @@ class UserIdentity:
 
     user_id: UUID
     display_name: str | None = None
+    is_demo: bool = False
 
     def __post_init__(self) -> None:
         if type(self.user_id) is not UUID:

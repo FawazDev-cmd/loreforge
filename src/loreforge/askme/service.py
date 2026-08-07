@@ -26,7 +26,12 @@ _GENERIC_UNAVAILABLE_ERROR = "AskMe is temporarily unavailable."
 class GroundedQueryEngine(Protocol):
     """Boundary for producing validated grounded answers."""
 
-    def answer(self, question: str) -> ValidatedGroundedAnswer:
+    def answer(
+        self,
+        question: str,
+        *,
+        owner_user_id: UUID | None = None,
+    ) -> ValidatedGroundedAnswer:
         """Answer a question with a validated grounded answer."""
         ...
 
@@ -46,7 +51,10 @@ class AskMeService:
     def ask(self, request: AskMeRequest) -> AskMeResult:
         """Answer an AskMe request with validated source citations."""
         try:
-            validated_answer = self._query_engine.answer(request.question)
+            validated_answer = self._query_engine.answer(
+                request.question,
+                owner_user_id=request.owner_user_id,
+            )
         except AskMeError:
             raise
         except NoRelevantEvidenceError as exc:

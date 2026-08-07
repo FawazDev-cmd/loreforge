@@ -190,6 +190,7 @@ Common production-facing settings include:
 - `LOREFORGE_DATABASE_URL=...`
 - `LOREFORGE_AUTH_PROVIDER=api_key`
 - `LOREFORGE_AUTH_API_KEYS=...`
+- `LOREFORGE_AUTH_DEMO_USER_IDS=...` for read-only demo users
 - `LOREFORGE_DOCUMENT_EMBEDDINGS_PROVIDER=local|gemini`
 - `LOREFORGE_QUERY_EMBEDDINGS_PROVIDER=local|gemini`
 - `LOREFORGE_RERANKER_PROVIDER=local`
@@ -254,7 +255,7 @@ Verification status:
 - Actual indexing happens through the admin catalog/indexing workflow.
 - Original PDF bytes are not durably stored anywhere yet.
 - Runtime vector/BM25 structures still need an explicit rebuild strategy after restart or redeploy.
-- AskMe authenticates requests when API-key auth is enabled, but the current `/ask` path does not pass the authenticated owner into retrieval filters; resolve this before exposing a shared public demo key.
+- Authenticated `/ask` requests are scoped to the requesting owner; demo identities can be configured as read/query-only with an in-process `/ask` rate limit.
 - `/ready` is lifecycle-state only; it does not prove PostgreSQL, Gemini, OpenRouter, or model-cache reachability.
 - Metrics are in-process and reset on restart.
 - Evaluation is deterministic fixture mode, not live production quality evaluation.

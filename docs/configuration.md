@@ -106,6 +106,8 @@ future provider and are not active by default.
 `LOREFORGE_AUTH_API_KEYS` uses comma-separated
 `user_uuid:api_key[:display_name]` entries. Never commit real keys.
 
+Demo identities are selected by user UUID with `LOREFORGE_AUTH_DEMO_USER_IDS`. Demo access is read/query-only, blocks upload, indexing, deletion, admin mutations, and metrics, and applies a small in-process `/ask` rate limit. The limiter resets on process restart and is not distributed across multiple application instances.
+
 ## Observability
 
 - `LOREFORGE_METRICS_ENABLED`

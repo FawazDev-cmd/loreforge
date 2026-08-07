@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, field_validator
 
 from loreforge.api.auth import get_current_principal
+from loreforge.api.demo import enforce_demo_ask_rate_limit
 from loreforge.application import ApplicationContainer
 from loreforge.askme import (
     AskMeGroundingError,
@@ -65,14 +66,21 @@ def get_askme_service(request: Request) -> AskMeService:
 @router.post("/ask", response_model=AskResponse)
 def ask(
     request: AskRequest,
+    http_request: Request,
     service: Annotated[AskMeService, Depends(get_askme_service)],
-    _principal: Annotated[
+    principal: Annotated[
         AuthenticatedPrincipal | None,
         Depends(get_current_principal),
     ],
 ) -> AskResponse:
+    enforce_demo_ask_rate_limit(http_request, principal)
     try:
-        result = service.ask(AskMeRequest(question=request.question))
+        result = service.ask(
+            AskMeRequest(
+                question=request.question,
+                owner_user_id=(None if principal is None else principal.user.user_id),
+            )
+        )
     except AskMeGroundingError as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,

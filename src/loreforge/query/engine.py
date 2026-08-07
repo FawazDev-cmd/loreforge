@@ -46,6 +46,7 @@ from loreforge.retrieval import (
     LexicalSearchResponse,
     LexicalSearchResult,
 )
+from loreforge.retrieval.filters import RetrievalFilter
 from loreforge.retrieval.hybrid import reciprocal_rank_fusion
 from loreforge.retrieval.repository import RetrievalRepository
 from loreforge.vector_index import VectorSearchResult
@@ -122,18 +123,29 @@ class ProductionGroundedQueryEngine:
         self._max_output_tokens = max_output_tokens
         self._temperature = temperature
 
-    def answer(self, question: str) -> ValidatedGroundedAnswer:
+    def answer(
+        self,
+        question: str,
+        *,
+        owner_user_id: UUID | None = None,
+    ) -> ValidatedGroundedAnswer:
         """Return a citation-validated grounded answer for a question."""
         if self._metrics_recorder is None:
-            return self._answer_unobserved(question)
-        return self._answer_observed(question)
+            return self._answer_unobserved(question, owner_user_id=owner_user_id)
+        return self._answer_observed(question, owner_user_id=owner_user_id)
 
-    def _answer_unobserved(self, question: str) -> ValidatedGroundedAnswer:
+    def _answer_unobserved(
+        self,
+        question: str,
+        *,
+        owner_user_id: UUID | None,
+    ) -> ValidatedGroundedAnswer:
         self._validate_question(question)
+        filters = self._retrieval_filters(owner_user_id)
 
         query_vector = self._embed_query(question)
-        semantic_results = self._semantic_search(query_vector)
-        lexical_response = self._lexical_search(question)
+        semantic_results = self._semantic_search(query_vector, filters=filters)
+        lexical_response = self._lexical_search(question, filters=filters)
 
         if not semantic_results and not lexical_response.results:
             raise NoRelevantEvidenceError(_NO_RELEVANT_EVIDENCE)
@@ -162,9 +174,14 @@ class ProductionGroundedQueryEngine:
 
         return self._enforce_citations(grounded_answer)
 
-    def _answer_observed(self, question: str) -> ValidatedGroundedAnswer:
+    def _answer_observed(
+        self,
+        question: str,
+        *,
+        owner_user_id: UUID | None,
+    ) -> ValidatedGroundedAnswer:
         if self._metrics_recorder is None:
-            return self._answer_unobserved(question)
+            return self._answer_unobserved(question, owner_user_id=owner_user_id)
 
         tracer = RequestTracer(
             operation=_OBSERVED_OPERATION,
@@ -178,6 +195,7 @@ class ProductionGroundedQueryEngine:
         try:
             with tracer.stage("validation"):
                 self._validate_question(question)
+                filters = self._retrieval_filters(owner_user_id)
 
             with tracer.stage("query_embedding"):
                 stage_start = perf_counter()
@@ -186,7 +204,7 @@ class ProductionGroundedQueryEngine:
 
             with tracer.stage("semantic_retrieval"):
                 stage_start = perf_counter()
-                semantic_results = self._semantic_search(query_vector)
+                semantic_results = self._semantic_search(query_vector, filters=filters)
                 _log_latency(
                     "engine.semantic_retrieval",
                     stage_start,
@@ -197,7 +215,7 @@ class ProductionGroundedQueryEngine:
 
             with tracer.stage("lexical_retrieval"):
                 stage_start = perf_counter()
-                lexical_response = self._lexical_search(question)
+                lexical_response = self._lexical_search(question, filters=filters)
                 _log_latency(
                     "engine.lexical_retrieval",
                     stage_start,
@@ -330,6 +348,11 @@ class ProductionGroundedQueryEngine:
         if not question.strip():
             raise QueryCompositionError("question must not be empty")
 
+    def _retrieval_filters(self, owner_user_id: UUID | None) -> RetrievalFilter:
+        if owner_user_id is None:
+            return RetrievalFilter()
+        return RetrievalFilter(owner_user_ids=(owner_user_id,))
+
     def _embed_query(
         self,
         question: str,
@@ -344,11 +367,14 @@ class ProductionGroundedQueryEngine:
     def _semantic_search(
         self,
         query_vector: EmbeddingVector,
+        *,
+        filters: RetrievalFilter,
     ) -> tuple[VectorSearchResult, ...]:
         try:
             return self._retrieval_repository.vector_search(
                 query_vector=query_vector.values,
                 top_k=self._semantic_top_k,
+                filters=filters,
             )
         except QueryCompositionError:
             raise
@@ -358,13 +384,15 @@ class ProductionGroundedQueryEngine:
     def _lexical_search(
         self,
         question: str,
+        *,
+        filters: RetrievalFilter,
     ) -> LexicalSearchResponse:
         try:
             request = LexicalSearchRequest(
                 query=question,
                 top_k=self._lexical_top_k,
             )
-            return self._retrieval_repository.lexical_search(request)
+            return self._retrieval_repository.lexical_search(request, filters=filters)
         except QueryCompositionError:
             raise
         except Exception as exc:

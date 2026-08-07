@@ -12,9 +12,13 @@ class AskMeRequest:
     """End-user question submitted to AskMe."""
 
     question: str
+    owner_user_id: UUID | None = None
 
     def __post_init__(self) -> None:
         _validate_nonblank_string(self.question, "question")
+        if self.owner_user_id is not None and type(self.owner_user_id) is not UUID:
+            msg = "owner_user_id must be a UUID"
+            raise ValueError(msg)
 
 
 @dataclass(frozen=True, slots=True)
