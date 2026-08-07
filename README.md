@@ -1,10 +1,17 @@
 # LoreForge
 
-Production-minded enterprise RAG system with hybrid retrieval, ownership isolation, and citation enforcement.
+Production-minded enterprise RAG system with hybrid retrieval, document ownership controls, and citation enforcement.
 
 LoreForge is a portfolio-grade backend and frontend project for a grounded question-answering assistant named AskMe. It demonstrates how an enterprise RAG workflow can be made inspectable: documents are parsed and chunked deterministically, retrieval combines semantic and lexical signals, answers are generated through provider abstractions, and citations are validated before a response is returned.
 
 The project is local-first and deterministic by default. Providers, authentication, and PostgreSQL are configurable, but disabled unless explicitly enabled.
+
+## Demo
+
+**Video demo:** [Watch the LoreForge demo](https://youtu.be/3K6DPf49Cp4)
+
+Raw URL:
+https://youtu.be/3K6DPf49Cp4
 
 ## Key Capabilities
 
@@ -16,7 +23,7 @@ The project is local-first and deterministic by default. Providers, authenticati
 | Generation | Provider-independent generation with Gemini and OpenRouter adapters |
 | Grounding | Evidence context construction, grounded prompts, citation extraction, citation enforcement, validated answers |
 | Persistence | PostgreSQL-backed metadata, users, ownership, indexing state, chunks, embeddings, and retrieval records |
-| Security | API-key bearer authentication and owner-scoped document access |
+| Security | API-key bearer authentication and owner-scoped document/catalog operations |
 | Runtime | Dependency injection, lifecycle readiness, structured logging, metrics, Gemini retry handling, graceful shutdown |
 | Quality | Offline deterministic tests, Ruff, mypy, GitHub Actions CI, Docker packaging |
 | Frontend | React/Vite workspace for authentication, documents, AskMe, citations, and engineering operations |
@@ -115,26 +122,54 @@ Install backend dependencies:
 uv sync --all-groups
 ```
 
-Run the API:
+Run the backend natively:
 
 ```powershell
 uv run --locked uvicorn loreforge.main:app --app-dir src
 ```
 
-Useful local endpoints:
+Useful backend endpoints:
 
 - `GET /health`
 - `GET /ready`
 - `GET /metrics`
 - `GET /docs`
 
-Run the frontend:
+Run the frontend separately:
 
 ```powershell
 cd frontend
 npm install
 npm run dev
 ```
+
+Docker prerequisite: Docker Desktop or another Docker daemon must be running.
+
+Development Compose startup uses `docker-compose.override.yml`, mounts `./src`, enables Uvicorn reload, and uses a Hugging Face cache volume when local model providers are configured:
+
+```powershell
+docker compose up --build
+```
+
+Stop development Compose:
+
+```powershell
+docker compose down
+```
+
+Production-style local backend startup excludes the development override and uses only the base Compose file:
+
+```powershell
+docker compose -f docker-compose.yml up --build
+```
+
+Stop production-style local Compose:
+
+```powershell
+docker compose -f docker-compose.yml down
+```
+
+Compose loads optional `.env.docker` values when the file exists. Keep provider keys, database URLs, and API keys in environment variables or local env files that are never committed. The Docker image currently packages the backend only; run the Vite frontend separately.
 
 ## Configuration Overview
 
@@ -167,7 +202,7 @@ Secrets are supplied through environment variables and are not required for the 
 Current verified backend result:
 
 ```text
-1403 passed, 2 skipped
+1407 passed, 2 skipped
 ```
 
 Backend checks:
@@ -194,24 +229,32 @@ CI exists at `.github/workflows/ci.yml` and runs deterministic backend and front
 
 ## Docker Status
 
-Docker support is implemented with `Dockerfile`, `.dockerignore`, and `docker-compose.yml`.
+Docker support is implemented with `Dockerfile`, `.dockerignore`, `docker-compose.yml`, and `docker-compose.override.yml`.
 
-Verified during hardening:
+Current Docker architecture:
 
-- production image build succeeded
-- container ran as non-root user `loreforge`
-- `/health` returned success
-- `/ready` returned success after startup
-- a basic container smoke request completed
-- Compose configuration validated with `docker compose config`
+- The Dockerfile builds a backend-only Python image with locked production dependencies from `uv.lock`.
+- The runtime image copies `src/`, `alembic.ini`, and `migrations/`; `frontend/`, `docs/`, and tests are excluded from the image context by `.dockerignore`.
+- The container runs as the non-root `loreforge` user and exposes port `8000`.
+- The Dockerfile healthcheck calls `/health`.
+- Compose publishes `${LOREFORGE_API_PORT:-8000}:8000`, uses the `loreforge` bridge network, and checks `/ready`.
+- Base Compose optionally loads `.env.docker`.
+- The development override mounts source code, enables reload, and adds a Hugging Face cache volume.
 
-The later repeat run was blocked by Docker Desktop host instability, including Docker engine startup failures unrelated to LoreForge application code. Re-run Docker image and container smoke verification on a healthy Docker daemon before release.
+Verification status:
+
+- `docker compose -f docker-compose.yml config` succeeded.
+- `docker compose config` succeeded and confirmed the development override behavior.
+- A fresh production image build and container smoke test could not be rerun because Docker Desktop's Linux engine was unavailable on this host during the audit.
+- Earlier hardening verified a production image build, non-root runtime, `/health`, `/ready`, and a basic smoke request. Re-run those checks on a healthy Docker daemon before deployment approval.
 
 ## Known Limitations
 
-- `POST /documents/upload` does not persist original PDF bytes or index documents.
+- `POST /documents/upload` validates and accepts a PDF, but does not persist original PDF bytes or index documents.
+- Actual indexing happens through the admin catalog/indexing workflow.
 - Original PDF bytes are not durably stored anywhere yet.
 - Runtime vector/BM25 structures still need an explicit rebuild strategy after restart or redeploy.
+- AskMe authenticates requests when API-key auth is enabled, but the current `/ask` path does not pass the authenticated owner into retrieval filters; resolve this before exposing a shared public demo key.
 - `/ready` is lifecycle-state only; it does not prove PostgreSQL, Gemini, OpenRouter, or model-cache reachability.
 - Metrics are in-process and reset on restart.
 - Evaluation is deterministic fixture mode, not live production quality evaluation.
@@ -223,8 +266,7 @@ The later repeat run was blocked by Docker Desktop host instability, including D
 Near term:
 
 - Add durable original-file storage or an explicit retrieval rebuild worker/runbook.
-- Capture real screenshots for the README and demo guide.
-- Re-run Docker smoke verification on a stable Docker Desktop/daemon.
+- Re-run Docker image build and container smoke verification on a stable Docker Desktop/daemon.
 
 Mid term:
 
@@ -246,7 +288,7 @@ Long term:
 - Adds CrossEncoder reranking before evidence is sent to generation.
 - Enforces citations before returning answers to users.
 - Preserves Clean Architecture with provider and repository abstractions.
-- Includes authentication, ownership isolation, PostgreSQL persistence, readiness, retries, metrics, CI, and Docker packaging.
+- Includes API-key authentication, owner-scoped document operations, PostgreSQL persistence, readiness, retries, metrics, CI, and Docker packaging.
 - Keeps default development deterministic, offline, and zero-cost.
 
 For deeper context, see [docs/demo-guide.md](docs/demo-guide.md) and [docs/final-engineering-audit.md](docs/final-engineering-audit.md).
