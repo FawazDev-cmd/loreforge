@@ -61,7 +61,7 @@ Important boundaries:
 - `POST /documents/upload` validates and accepts a PDF, but does not durably store the PDF or index it.
 - Actual indexing happens through the admin catalog/indexing workflow.
 - Original PDF bytes are not durably stored.
-- Retrieval can use persisted metadata, chunks, embeddings, and retrieval records, but a full production rebuild strategy still needs durable original-file storage or a formal rebuild worker/runbook.
+- Query retrieval reconstructs temporary semantic/vector and lexical/BM25 structures from persisted metadata, chunks, embeddings, and retrieval records. Disaster recovery after loss of that indexed data still requires durable original-file storage or another recoverable source.
 - `/ready` reports only in-process lifecycle readiness. It performs no live database, Gemini, reranker, query-engine, or external dependency checks at request time.
 
 ## Screenshots
@@ -203,7 +203,7 @@ Secrets are supplied through environment variables and are not required for the 
 Current verified backend result:
 
 ```text
-1407 passed, 2 skipped
+1431 passed, 2 skipped
 ```
 
 Backend checks:
@@ -246,27 +246,28 @@ Verification status:
 
 - `docker compose -f docker-compose.yml config` succeeded.
 - `docker compose config` succeeded and confirmed the development override behavior.
-- A fresh production image build and container smoke test could not be rerun because Docker Desktop's Linux engine was unavailable on this host during the audit.
-- Earlier hardening verified a production image build, non-root runtime, `/health`, `/ready`, and a basic smoke request. Re-run those checks on a healthy Docker daemon before deployment approval.
+- Docker Desktop's engine later became available, but a fresh production image build failed while downloading the locked CPU PyTorch wheel because of Docker-side DNS/network resolution.
+- A fresh production image and container smoke test therefore remain unverified. This does not establish an application or ARM64 dependency incompatibility; a later explicit Linux aarch64 `uv` simulation resolved all locked production dependencies successfully.
 
 ## Known Limitations
 
 - `POST /documents/upload` validates and accepts a PDF, but does not persist original PDF bytes or index documents.
 - Actual indexing happens through the admin catalog/indexing workflow.
 - Original PDF bytes are not durably stored anywhere yet.
-- Runtime vector/BM25 structures still need an explicit rebuild strategy after restart or redeploy.
+- Document chunks, embeddings, and retrieval metadata are persisted in PostgreSQL. The production query path reconstructs temporary semantic/vector and lexical/BM25 structures from those durable rows, so a seeded corpus remains queryable after backend restart without a global manual rebuild.
+- If persisted indexed data is lost, full re-indexing from the source PDF is not possible because original PDF bytes are not durably stored.
 - Authenticated `/ask` requests are scoped to the requesting owner; demo identities can be configured as read/query-only with an in-process `/ask` rate limit.
 - `/ready` is lifecycle-state only; it does not prove PostgreSQL, Gemini, OpenRouter, or model-cache reachability.
 - Metrics are in-process and reset on restart.
 - Evaluation is deterministic fixture mode, not live production quality evaluation.
-- OAuth/OIDC, roles, RBAC, rate limiting, object storage, Kubernetes, horizontal scaling, and distributed tracing are not implemented.
+- OAuth/OIDC, roles, RBAC, general-purpose/distributed rate limiting, object storage, Kubernetes, horizontal scaling, and distributed tracing are not implemented.
 - Live provider behavior depends on configured API keys, provider availability, model limits, and local model cache state.
 
 ## Roadmap
 
 Near term:
 
-- Add durable original-file storage or an explicit retrieval rebuild worker/runbook.
+- Add durable original-file storage and a disaster-recovery re-indexing worker/runbook.
 - Re-run Docker image build and container smoke verification on a stable Docker Desktop/daemon.
 
 Mid term:
