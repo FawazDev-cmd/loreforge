@@ -23,12 +23,16 @@ ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     LOREFORGE_API_HOST=0.0.0.0 \
-    LOREFORGE_API_PORT=8000
+    LOREFORGE_API_PORT=8000 \
+    HF_HOME=/home/loreforge/.cache/huggingface \
+    TRANSFORMERS_CACHE=/home/loreforge/.cache/huggingface
 
 WORKDIR /app
 
 RUN groupadd --system loreforge \
-    && useradd --system --gid loreforge --home-dir /app --shell /usr/sbin/nologin loreforge
+    && useradd --system --gid loreforge --home-dir /app --shell /usr/sbin/nologin loreforge \
+    && mkdir -p /home/loreforge/.cache/huggingface \
+    && chown -R loreforge:loreforge /home/loreforge
 
 COPY --from=builder --chown=loreforge:loreforge /app/.venv /app/.venv
 COPY --chown=loreforge:loreforge src ./src

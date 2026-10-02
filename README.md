@@ -246,8 +246,12 @@ Verification status:
 
 - `docker compose -f docker-compose.yml config` succeeded.
 - `docker compose config` succeeded and confirmed the development override behavior.
-- Docker Desktop's engine later became available, but a fresh production image build failed while downloading the locked CPU PyTorch wheel because of Docker-side DNS/network resolution.
-- A fresh production image and container smoke test therefore remain unverified. This does not establish an application or ARM64 dependency incompatibility; a later explicit Linux aarch64 `uv` simulation resolved all locked production dependencies successfully.
+- Production Docker image build succeeded.
+- Production container smoke test succeeded.
+- The container completed local CrossEncoder model warm-up and reached a healthy running state.
+- `GET /health` returned HTTP 200 with the expected healthy response.
+- The runtime image runs as the non-root `loreforge` user with a writable Hugging Face model cache.
+
 
 ## Known Limitations
 
@@ -268,7 +272,6 @@ Verification status:
 Near term:
 
 - Add durable original-file storage and a disaster-recovery re-indexing worker/runbook.
-- Re-run Docker image build and container smoke verification on a stable Docker Desktop/daemon.
 
 Mid term:
 
