@@ -70,3 +70,32 @@ def rerank_hybrid_results(
             for rank, (hybrid_result, score) in enumerate(ranked, start=1)
         ),
     )
+
+def passthrough_rerank_hybrid_results(
+    *,
+    question: str,
+    candidates: tuple[HybridSearchResult, ...],
+    top_k: int,
+) -> RerankedSearchResponse:
+    """Preserve hybrid retrieval order when reranking is disabled."""
+    if not question.strip():
+        msg = "question must not be empty"
+        raise ValueError(msg)
+
+    if top_k <= 0:
+        msg = "top_k must be greater than zero"
+        raise ValueError(msg)
+
+    selected = candidates[:top_k]
+
+    return RerankedSearchResponse(
+        question=question,
+        results=tuple(
+            RerankedSearchResult(
+                hybrid_result=candidate,
+                reranker_score=0.0,
+                rank=rank,
+            )
+            for rank, candidate in enumerate(selected, start=1)
+        ),
+    )

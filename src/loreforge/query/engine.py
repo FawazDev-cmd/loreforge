@@ -39,7 +39,7 @@ from loreforge.reranking import (
     RerankedSearchResult,
     RerankerProvider,
 )
-from loreforge.reranking.pipeline import rerank_hybrid_results
+from loreforge.reranking.pipeline import (rerank_hybrid_results, passthrough_rerank_hybrid_results)
 from loreforge.retrieval import (
     HybridSearchResult,
     LexicalSearchRequest,
@@ -66,7 +66,7 @@ EvidenceBuilder = Callable[
 PromptBuilder = Callable[[str, EvidenceContext], PromptPackage]
 CitationEnforcer = Callable[[GroundedAnswer], ValidatedGroundedAnswer]
 RerankingStage = Callable[
-    [str, tuple[HybridSearchResult, ...], RerankerProvider, int],
+    [str, tuple[HybridSearchResult, ...], RerankerProvider | None, int],
     RerankedSearchResponse,
 ]
 
@@ -79,7 +79,7 @@ class ProductionGroundedQueryEngine:
         *,
         query_embedder: QueryEmbeddingProvider,
         retrieval_repository: RetrievalRepository,
-        reranker: RerankerProvider,
+        reranker: RerankerProvider | None,
         answer_generator: LLMProvider,
         hybrid_fuser: HybridFuser | None = None,
         evidence_builder: EvidenceBuilder | None = None,
@@ -667,9 +667,11 @@ def _estimate_tokens(*texts: str) -> int:
 def _default_reranking_stage(
     question: str,
     candidates: tuple[HybridSearchResult, ...],
-    provider: RerankerProvider,
+    provider: RerankerProvider | None,
     top_k: int,
 ) -> RerankedSearchResponse:
+    if provider is None:
+        return passthrough_rerank_hybrid_results(question=question, candidates=candidates, top_k=top_k)
     return rerank_hybrid_results(
         question=question,
         candidates=candidates,
