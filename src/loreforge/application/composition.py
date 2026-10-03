@@ -336,7 +336,6 @@ def _create_query_engine(
     if (
         retrieval_repository is None
         or query_embedder is None
-        or reranker is None
         or answer_generator is None
     ):
         return None
