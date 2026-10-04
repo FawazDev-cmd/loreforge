@@ -10,6 +10,16 @@ The project is local-first and deterministic by default. Providers, authenticati
 
 **Video demo:** [Watch the LoreForge demo](https://youtu.be/3K6DPf49Cp4)
 
+### Live demo access
+
+**Live application:** https://loreforge-jade.vercel.app
+
+The live deployment uses a shared demo access code.
+
+**Demo access code:** `loreforge-demo-2026`
+
+The demo account is intended for exploring the document workspace, AskMe, citations, and engineering operations.
+
 Raw URL:
 https://youtu.be/3K6DPf49Cp4
 

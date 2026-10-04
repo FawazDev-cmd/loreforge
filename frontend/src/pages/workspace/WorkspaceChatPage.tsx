@@ -4,7 +4,7 @@ import { QuestionForm } from "../../features/query/QuestionForm";
 
 export function WorkspaceChatPage() {
   return (
-    <section className="split">
+    <section className="stack query-page">
       <div>
         <PageHeader
           title="AskMe"

@@ -34,9 +34,9 @@ describe("shared UI foundation", () => {
   });
 
   it("connects input help and error text", () => {
-    render(<Input error="Required" helpText="Use a bearer token." label="API key" />);
+    render(<Input error="Required" helpText="Use a bearer token." label="Demo access code" />);
 
-    const input = screen.getByLabelText("API key");
+    const input = screen.getByLabelText("Demo access code");
     expect(input).toHaveAccessibleDescription("Use a bearer token. Required");
     expect(input).toHaveAttribute("aria-invalid", "true");
   });

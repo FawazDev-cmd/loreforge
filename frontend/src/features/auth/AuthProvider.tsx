@@ -70,11 +70,11 @@ export function AuthProvider({ children, fetchImpl }: AuthProviderProps) {
       } catch (caughtError) {
         removeStoredAuthSession();
         if (caughtError instanceof UnauthorizedApiError) {
-          setError("The API key was not accepted.");
+          setError("The demo access code was not accepted.");
           throw caughtError;
         }
         if (caughtError instanceof ApiClientError) {
-          setError("LoreForge could not verify the API key right now.");
+          setError("LoreForge could not verify the demo access code right now.");
           throw caughtError;
         }
         setError("LoreForge could not be reached.");

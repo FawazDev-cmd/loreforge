@@ -11,6 +11,12 @@ import { useDocumentsQuery } from "../documents/hooks";
 import { AnswerPanel } from "./AnswerPanel";
 import { useAskQuestion } from "./hooks";
 
+const suggestedQuestions = [
+  "What is the company's policy for reporting a security incident?",
+  "What should an employee do if a company device is lost or stolen?",
+  "How should a security incident be escalated?",
+];
+
 export function QuestionForm() {
   const documentsQuery = useDocumentsQuery();
   const askQuestion = useAskQuestion();
@@ -90,7 +96,7 @@ export function QuestionForm() {
         <Link to={routes.workspaceDocuments}>View document statuses</Link>
       </Card>
       <Card>
-        <form className="form-grid" onSubmit={handleSubmit}>
+        <form className="form-grid query-form" onSubmit={handleSubmit}>
           <label className="field" htmlFor="question">
             <span className="field__label">Question</span>
             <textarea
@@ -98,13 +104,29 @@ export function QuestionForm() {
               id="question"
               onChange={(event) => setQuestion(event.currentTarget.value)}
               placeholder="Ask a grounded question across your READY documents."
-              rows={5}
+              rows={3}
               value={question}
             />
           </label>
           <Button disabled={askQuestion.isPending} type="submit">
             {askQuestion.isPending ? "Asking" : "AskMe"}
           </Button>
+          <div className="query-suggestions">
+            <span className="query-suggestions__label">Try a question</span>
+            <div className="query-suggestions__list">
+              {suggestedQuestions.map((suggestion) => (
+                <button
+                  className="query-suggestion"
+                  key={suggestion}
+                  onClick={() => setQuestion(suggestion)}
+                  type="button"
+                >
+                  {suggestion}
+                </button>
+              ))}
+            </div>
+          </div>
+
         </form>
       </Card>
       {validationMessage ? <ErrorState message={validationMessage} title="Question not ready" /> : null}

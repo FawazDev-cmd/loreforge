@@ -13,7 +13,7 @@ export function AdminSystemPage() {
     <section className="stack">
       <PageHeader
         title="System"
-        description="Backend-supported health and readiness checks. Secrets, environment variables, and internal paths are never displayed."
+        description="Backend-supported health and readiness checks for the loreForge service."
       />
       {systemStatus.isLoading ? <LoadingState label="Loading system status." /> : null}
       {systemStatus.isError ? (
@@ -22,20 +22,22 @@ export function AdminSystemPage() {
       {systemStatus.data ? (
         <div className="dashboard-grid">
           <OperationalStatusCard
-            detail={health ? `Service ${health.service} reports ${health.status}.` : "Health endpoint is not available."}
+            detail={
+              health
+                ? `Service ${health.service} reports ${health.status}.`
+                : "Health endpoint is not available."
+            }
             status={health?.status === "healthy" ? "healthy" : "unavailable"}
             title="API health"
           />
+
           <OperationalStatusCard
             detail={readinessDetail(readiness)}
             status={readinessStatus(readiness)}
             title="Readiness"
           />
-          <OperationalStatusCard detail="Version is not exposed by the backend API." status="unknown" title="Application version" />
-          <OperationalStatusCard detail="Provider details are intentionally not exposed in the UI." status="unknown" title="Configured provider" />
-          <OperationalStatusCard detail="Database readiness is represented by lifecycle readiness only." status="unknown" title="Database readiness" />
-          <OperationalStatusCard detail="Retrieval readiness is not exposed as a separate backend check." status="unknown" title="Retrieval readiness" />
         </div>
+
       ) : null}
     </section>
   );

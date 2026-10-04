@@ -41,7 +41,7 @@ export function LoginPage() {
       await login(values);
       navigate(redirectTo, { replace: true });
     } catch {
-      setSubmissionError("Sign in failed. Check the API key and try again.");
+      setSubmissionError("Sign in failed. Check the demo access code and try again.");
     }
   }
 
@@ -49,7 +49,7 @@ export function LoginPage() {
     <section className="stack">
       <PageHeader
         title="Sign in"
-        description="Use a backend-issued bearer API key to open the protected demo workspace and engineering views. The browser stores it only for this session."
+        description="Use the demo access code provided for this deployment."
         actions={
           <Button as={Link} to={routes.home} variant="secondary">
             Product overview
@@ -68,11 +68,22 @@ export function LoginPage() {
           <Input
             autoComplete="current-password"
             error={errors.apiKey?.message}
-            helpText="Use the configured LoreForge bearer token. The full key is never shown after entry."
-            label="API key"
+            helpText="Enter the demo access code provided for this deployment."
+            label="Demo access code"
             type="password"
             {...register("apiKey")}
           />
+          <p className="muted">
+            Need the demo access code?{" "}
+            <a
+              href="https://github.com/FawazDev-cmd/loreforge#live-demo-access"
+              target="_blank"
+              rel="noreferrer"
+            >
+              View demo instructions
+            </a>
+          </p>
+
           <Button disabled={!isValid || isSubmitting} type="submit">
             {isSubmitting ? "Checking access" : "Continue"}
           </Button>

@@ -1,9 +1,14 @@
+import { nullable } from "zod/v4-mini";
 import { ErrorState } from "../../components/feedback/ErrorState";
 import { LoadingState } from "../../components/feedback/LoadingState";
 import { Card } from "../../components/ui/Card";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { OperationalStatusCard } from "../../features/operations/OperationalStatusCard";
 import { useMetricsQuery } from "../../features/operations/hooks";
+
+function formatMetricLabels(labels: Record<string, string>): string {
+  return Object.entries(labels).map(([key, value]) => `${key}=${value}`).join(" . ");
+}
 
 export function AdminMetricsPage() {
   const metrics = useMetricsQuery();
@@ -20,23 +25,28 @@ export function AdminMetricsPage() {
       {metrics.isError ? <ErrorState message="LoreForge could not load operational metrics." title="Metrics unavailable" /> : null}
       {metrics.data ? (
         <>
-          <div className="dashboard-grid">
-            <OperationalStatusCard
-              detail={metrics.data.status === "ok" ? "Metrics snapshot loaded." : "Metrics recorder unavailable."}
-              status={metrics.data.status === "ok" ? "healthy" : "unavailable"}
-              title="Metrics endpoint"
-            />
-            <OperationalStatusCard detail={`${counters.length} counter series exposed.`} status="unknown" title="Counters" />
-            <OperationalStatusCard detail={`${durations.length} duration series exposed.`} status="unknown" title="Durations" />
-          </div>
+          <OperationalStatusCard
+            detail={metrics.data.status === "ok" ? "Metrics snapshot loaded." : "Metrics recorder unavailable."}
+            status={metrics.data.status === "ok" ? "healthy" : "unavailable"}
+            title="Metrics endpoint"
+          />
+
           <Card className="operation-card">
             <h2>Request and pipeline counters</h2>
             {counters.length > 0 ? (
               <ul className="metric-list">
                 {counters.slice(0, 8).map((counter) => (
                   <li key={`${counter.name}:${JSON.stringify(counter.labels)}`}>
-                    <span>{counter.name}</span>
+                    <div>
+                      <span>{counter.name}</span>
+                      {Object.keys(counter.labels).length > 0 ? (
+                        <small className="muted">
+                          {formatMetricLabels(counter.labels)}
+                        </small>
+                      ) : null}
+                    </div>
                     <strong>{counter.value}</strong>
+
                   </li>
                 ))}
               </ul>
@@ -50,7 +60,14 @@ export function AdminMetricsPage() {
               <ul className="metric-list">
                 {durations.slice(0, 8).map((duration) => (
                   <li key={`${duration.name}:${JSON.stringify(duration.labels)}`}>
-                    <span>{duration.name}</span>
+                    <div>
+                      <span>{duration.name}</span>
+                      {Object.keys(duration.labels).length > 0 ? (
+                        <small className="muted">
+                          {formatMetricLabels(duration.labels)}
+                        </small>
+                      ) : null}
+                    </div>
                     <strong>{duration.count} observations</strong>
                   </li>
                 ))}

@@ -13,7 +13,7 @@ export function AnswerPanel({ response }: AnswerPanelProps) {
         <h2 id="grounded-answer-heading">Grounded answer</h2>
       </header>
       <p className="answer-panel__text">{response.answer}</p>
-      <p className="muted">Request ID: {response.request_id}</p>
+      <p className="answer-panel__request">Request ID: {response.request_id}</p>
       <CitationList citations={response.citations} />
     </section>
   );
