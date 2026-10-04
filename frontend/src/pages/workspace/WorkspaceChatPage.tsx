@@ -1,4 +1,3 @@
-import { EmptyState } from "../../components/feedback/EmptyState";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { QuestionForm } from "../../features/query/QuestionForm";
 

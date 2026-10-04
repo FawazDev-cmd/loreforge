@@ -18,17 +18,17 @@ export function AdminOverviewPage() {
         }
       />
       <div className="dashboard-grid">
-        <Card className="operation-card">
+        <Card className="operation-card operation-card--system">
           <h2>System</h2>
           <p className="muted">Confirm the API is healthy and ready using backend-supported checks.</p>
           <Link to={routes.adminSystem}>Open system view</Link>
         </Card>
-        <Card className="operation-card">
+        <Card className="operation-card operation-card--metrics">
           <h2>Metrics</h2>
           <p className="muted">Inspect aggregate counters and duration snapshots without exposing secrets or high-cardinality labels.</p>
           <Link to={routes.adminMetrics}>Open metrics view</Link>
         </Card>
-        <Card className="operation-card">
+        <Card className="operation-card operation-card--evaluation">
           <h2>Evaluation</h2>
           <p className="muted">See the honest current state: deterministic evaluation exists, but the summary API is not exposed.</p>
           <Link to={routes.adminEvaluation}>Open evaluation view</Link>
