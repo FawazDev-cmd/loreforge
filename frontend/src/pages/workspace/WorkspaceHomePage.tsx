@@ -44,10 +44,12 @@ export function WorkspaceHomePage() {
           <Badge tone="neutral">Evidence metadata</Badge>
         </Card>
       </div>
-      <EmptyState
-        title="Recommended demo path"
-        message="Upload Documents -> wait until READY -> ask AskMe -> inspect citations -> open Engineering Operations."
-      />
+      <Card className="journey-card">
+        <h2>Workspace flow</h2>
+        <p>
+          Build the document collection, ask questions across ready documents, and trace answers back to their sources.
+        </p>
+      </Card>
     </section>
   );
 }

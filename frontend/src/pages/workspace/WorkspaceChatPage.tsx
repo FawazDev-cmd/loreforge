@@ -12,10 +12,7 @@ export function WorkspaceChatPage() {
         />
         <QuestionForm />
       </div>
-      <EmptyState
-        title="Grounding is visible"
-        message="AskMe answers must include citations. Evidence excerpts are not exposed by the backend yet, so the UI shows source metadata honestly."
-      />
+
     </section>
   );
 }

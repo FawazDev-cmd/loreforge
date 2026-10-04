@@ -11,7 +11,7 @@ export function PublicHomePage() {
     <section className="stack">
       <PageHeader
         title="LoreForge"
-        description="A private-document AskMe system: upload PDFs, wait for indexing, ask grounded questions, and inspect the citations behind every answer."
+        description="Search your organization's knowledge. Get answers grounded in its documents and trace them back to their sources."
         actions={
           <>
             <Button as={Link} to={routes.workspace}>
@@ -25,27 +25,27 @@ export function PublicHomePage() {
       />
       <div className="dashboard-grid">
         <Card className="metric">
-          <span className="muted">1. Build the collection</span>
-          <span className="metric__value">Upload PDFs</span>
-          <p className="muted">LoreForge accepts documents, tracks ingestion, and shows when they become READY for retrieval.</p>
+          <span className="muted">1. Build the knowledge base</span>
+          <span className="metric__value">Upload documents</span>
+          <p className="muted">Upload internal documents and track them through the indexing workflow until they are ready for retrieval.</p>
           <Badge tone="info">Document workflow</Badge>
         </Card>
         <Card className="metric">
           <span className="muted">2. Ask grounded questions</span>
-          <span className="metric__value">AskMe answers</span>
-          <p className="muted">Answers are generated only from indexed evidence and returned with citation metadata.</p>
-          <Badge tone="success">Citation aware</Badge>
+          <span className="metric__value">Get document-based answers</span>
+          <p className="muted">Ask questions across your document collection and get the answers based on retrieved evidence.</p>
+          <Badge tone="success">Grounded answers</Badge>
         </Card>
         <Card className="metric">
-          <span className="muted">3. Inspect operations</span>
-          <span className="metric__value">Engineering view</span>
-          <p className="muted">Health, readiness, metrics, and offline evaluation posture are separated from the user workflow.</p>
-          <Badge tone="neutral">Production minded</Badge>
+          <span className="muted">3. Trace the answer</span>
+          <span className="metric__value">Inspect sources</span>
+          <p className="muted">Review the documents and citations returned with each answer.</p>
+          <Badge tone="neutral">Source traceability</Badge>
         </Card>
       </div>
       <Card className="journey-card">
-        <h2>Demo path</h2>
-        <p>Sign in, upload a PDF, monitor ingestion, ask AskMe, inspect citations, then review Engineering Operations.</p>
+        <h2>Explore the workspace</h2>
+        <p>Sign in to explore the document collection, ask a question, inspect its sources, and review system operations.</p>
       </Card>
     </section>
   );
