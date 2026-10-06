@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createElement, useState, type ReactNode } from "react";
+import { Link } from "react-router-dom"
 
 import { ApiClientError, UnauthorizedApiError } from "../../api/client";
 import { useAuth } from "../auth/useAuth";
@@ -98,7 +99,7 @@ export function documentDeleteErrorMessage(error: unknown): ReactNode {
         "span",
         null,
         "Demo access is read-only. You can view documents and use ",
-        createElement("a", { href: "/workspace/chat" }, "AskMe"),
+        createElement(Link, { to: "/workspace/chat" }, "AskMe"),
         ", but deleting documents requires authorized access.",
       );
     }
@@ -125,7 +126,7 @@ export function documentUploadErrorMessage(error: unknown): ReactNode {
         "span",
         null,
         "Demo access is read-only. You can view documents and use ",
-        createElement("a", { href: "/workspace/chat" }, "AskMe"),
+        createElement(Link, { to: "/workspace/chat" }, "AskMe"),
         ", but uploading documents requires authorized access.",
       );
     }
