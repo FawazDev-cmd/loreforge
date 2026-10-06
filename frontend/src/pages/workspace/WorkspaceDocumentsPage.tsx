@@ -58,7 +58,7 @@ export function WorkspaceDocumentsPage() {
         </p>
       ) : null}
       {deleteDocument.errorMessage ? (
-        <ErrorState message={deleteDocument.errorMessage} title="Delete failed" />
+        <ErrorState message={deleteDocument.errorMessage} title="Delete unavailable" />
       ) : null}
       {isPollingActiveDocuments ? (
         <p className="muted" role="status">

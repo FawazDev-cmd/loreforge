@@ -70,7 +70,7 @@ export function UploadForm() {
         </Card>
       ) : null}
       {upload.errorMessage ? (
-        <ErrorState message={upload.errorMessage} title="Upload failed" />
+        <ErrorState message={upload.errorMessage} title="Upload unavailable" />
       ) : null}
     </div>
   );
