@@ -91,7 +91,11 @@ export function documentDeleteErrorMessage(error: unknown): string {
   if (error instanceof UnauthorizedApiError) {
     return "Your session is no longer authorized. Sign in again.";
   }
+
   if (error instanceof ApiClientError) {
+    if (error.status === 403) {
+      return "Demo access is read-only. You can view documents and use AskMe, but deleting documents requires authorized access.";
+    }
     if (error.status === 404) {
       return "That document is no longer available.";
     }
@@ -102,7 +106,7 @@ export function documentDeleteErrorMessage(error: unknown): string {
       return "LoreForge could not delete the document right now.";
     }
   }
-  return "Document deletion failed.";
+  return "Document deletion unavailable.";
 }
 
 export function documentUploadErrorMessage(error: unknown): string {
@@ -110,6 +114,9 @@ export function documentUploadErrorMessage(error: unknown): string {
     return "Your session is no longer authorized. Sign in again.";
   }
   if (error instanceof ApiClientError) {
+    if (error.status === 403) {
+      return "Demo access is read-only. You can view documents and use AskMe, but uploading documents requires authorized access.";
+    }
     if (error.status === 413) {
       return "The PDF is larger than the 10 MB upload limit.";
     }
@@ -126,7 +133,7 @@ export function documentUploadErrorMessage(error: unknown): string {
   if (error instanceof Error && error.message.includes("Network")) {
     return "Network failure during document upload.";
   }
-  return "Document upload failed.";
+  return "Document upload unavailable.";
 }
 
 export type DocumentUploadMutationResult = ReturnType<typeof useDocumentUpload> & {
