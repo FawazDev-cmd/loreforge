@@ -4,7 +4,7 @@ import "../ui/ui.css";
 
 type ErrorStateProps = {
   action?: ReactNode;
-  message: string;
+  message: ReactNode;
   title?: string;
 };
 

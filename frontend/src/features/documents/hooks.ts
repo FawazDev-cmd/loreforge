@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { createElement, useState, type ReactNode } from "react";
 
 import { ApiClientError, UnauthorizedApiError } from "../../api/client";
 import { useAuth } from "../auth/useAuth";
@@ -87,14 +87,20 @@ export function useDocumentDelete() {
   };
 }
 
-export function documentDeleteErrorMessage(error: unknown): string {
+export function documentDeleteErrorMessage(error: unknown): ReactNode {
   if (error instanceof UnauthorizedApiError) {
     return "Your session is no longer authorized. Sign in again.";
   }
 
   if (error instanceof ApiClientError) {
     if (error.status === 403) {
-      return "Demo access is read-only. You can view documents and use AskMe, but deleting documents requires authorized access.";
+      return createElement(
+        "span",
+        null,
+        "Demo access is read-only. You can view documents and use ",
+        createElement("a", { href: "/workspace/chat" }, "AskMe"),
+        ", but deleting documents requires authorized access.",
+      );
     }
     if (error.status === 404) {
       return "That document is no longer available.";
@@ -109,13 +115,19 @@ export function documentDeleteErrorMessage(error: unknown): string {
   return "Document deletion unavailable.";
 }
 
-export function documentUploadErrorMessage(error: unknown): string {
+export function documentUploadErrorMessage(error: unknown): ReactNode {
   if (error instanceof UnauthorizedApiError) {
     return "Your session is no longer authorized. Sign in again.";
   }
   if (error instanceof ApiClientError) {
     if (error.status === 403) {
-      return "Demo access is read-only. You can view documents and use AskMe, but uploading documents requires authorized access.";
+      return createElement(
+        "span",
+        null,
+        "Demo access is read-only. You can view documents and use ",
+        createElement("a", { href: "/workspace/chat" }, "AskMe"),
+        ", but uploading documents requires authorized access.",
+      );
     }
     if (error.status === 413) {
       return "The PDF is larger than the 10 MB upload limit.";
